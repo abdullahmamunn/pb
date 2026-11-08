@@ -1680,7 +1680,7 @@ export default async function handler(req, res) {
       sendJson(res, 400, { error: "মক টেস্টের জন্য অন্তত একটি টপিক বেছে নিন।" });
       return;
     }
-    const count = readCount(req, 30, { min: 10, max: 50 });
+    const count = readCount(req, 100, { min: 10, max: 100 });
     const built = await buildCustomMock(selections, count, org);
     if (!built.questions.length) {
       sendJson(res, 404, {
