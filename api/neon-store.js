@@ -1,0 +1,107 @@
+import { neon } from "@neondatabase/serverless";
+
+const sql = neon(process.env.DATABASE_URL || process.env.POSTGRES_URL);
+
+let ready;
+
+function ensureSchema() {
+  ready ??= (async () => {
+    await sql`
+      CREATE TABLE IF NOT EXISTS questions (
+        id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        question TEXT NOT NULL,
+        options TEXT NOT NULL,
+        answer INTEGER NOT NULL,
+        explanation TEXT NOT NULL,
+        category TEXT NOT NULL,
+        topic TEXT NOT NULL,
+        parent_topic TEXT NOT NULL DEFAULT '',
+        topic_label TEXT NOT NULL DEFAULT '',
+        difficulty TEXT NOT NULL DEFAULT 'Medium',
+        source TEXT NOT NULL DEFAULT '',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `;
+    await sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS questions_dedupe
+      ON questions (category, topic, md5(question))
+    `;
+  })();
+  return ready;
+}
+
+function toPublic(row) {
+  return {
+    question: row.question,
+    options: JSON.parse(row.options),
+    answer: Number(row.answer),
+    explanation: row.explanation,
+    category: row.category,
+    topic: row.topic,
+    topicLabel: row.topic_label,
+    difficulty: row.difficulty,
+    source: row.source ? `সংরক্ষিত · ${row.source}` : "সংরক্ষিত প্রশ্ন",
+  };
+}
+
+export async function saveQuestions(questions, meta) {
+  await ensureSchema();
+  const created = new Date().toISOString();
+  let saved = 0;
+  for (const item of questions) {
+    const rows = await sql`
+      INSERT INTO questions
+        (question, options, answer, explanation, category, topic, parent_topic, topic_label, difficulty, source, created_at)
+      VALUES (
+        ${item.question},
+        ${JSON.stringify(item.options)},
+        ${item.answer},
+        ${item.explanation},
+        ${meta.category},
+        ${meta.topic},
+        ${meta.parentTopic || ""},
+        ${meta.topicLabel || ""},
+        ${item.difficulty || "Medium"},
+        ${meta.source || ""},
+        ${created}
+      )
+      ON CONFLICT (category, topic, md5(question)) DO NOTHING
+      RETURNING id
+    `;
+    saved += rows.length;
+  }
+  return saved;
+}
+
+export async function countByCategory() {
+  await ensureSchema();
+  const rows = await sql`SELECT category, COUNT(*)::int AS total FROM questions GROUP BY category`;
+  const categories = {};
+  let total = 0;
+  for (const row of rows) {
+    categories[row.category] = Number(row.total);
+    total += Number(row.total);
+  }
+  return { categories, total };
+}
+
+export async function countByTopic() {
+  await ensureSchema();
+  const rows = await sql`SELECT category, topic, COUNT(*)::int AS total FROM questions GROUP BY category, topic`;
+  const counts = {};
+  for (const row of rows) counts[`${row.category}:${row.topic}`] = Number(row.total);
+  return counts;
+}
+
+export async function practiceQuestions(category, topicIds, limit) {
+  await ensureSchema();
+  if (!topicIds.length) return [];
+  const rows = await sql`
+    SELECT question, options, answer, explanation, category, topic, topic_label, difficulty, source
+    FROM questions
+    WHERE category = ${category} AND topic = ANY(${topicIds})
+    ORDER BY RANDOM()
+    LIMIT ${limit}
+  `;
+  return rows.map(toPublic);
+}

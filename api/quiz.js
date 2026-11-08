@@ -1167,8 +1167,8 @@ function sessionSize(category, mode) {
   return category === "mixed" ? MIXED_SESSION : CATEGORY_SESSION;
 }
 
-function catalog() {
-  const saved = countByCategory();
+async function catalog() {
+  const saved = await countByCategory();
   const categories = {};
   const bank = {};
   for (const id of CATEGORY_IDS) {
@@ -1453,12 +1453,12 @@ export default async function handler(req, res) {
   const scope = topicId && category !== "mixed" ? topicScope(category, topicId) : null;
 
   if (mode === "catalog") {
-    sendJson(res, 200, catalog(), { "X-Quiz-Source": "past_papers" });
+    sendJson(res, 200, await catalog(), { "X-Quiz-Source": "past_papers" });
     return;
   }
 
   if (mode === "topics") {
-    sendJson(res, 200, { topics: treeWithCounts(countByTopic()) });
+    sendJson(res, 200, { topics: treeWithCounts(await countByTopic()) });
     return;
   }
 
@@ -1473,7 +1473,7 @@ export default async function handler(req, res) {
       return;
     }
     const count = readCount(req, 10);
-    const questions = practiceQuestions(category, scope.ids, count);
+    const questions = await practiceQuestions(category, scope.ids, count);
     if (!questions.length) {
       sendJson(res, 404, { error: "এই টপিকে এখনো কোনো সংরক্ষিত প্রশ্ন নেই। আগে এআই দিয়ে তৈরি করুন।" });
       return;
@@ -1509,7 +1509,7 @@ export default async function handler(req, res) {
       }));
       let stored = 0;
       if (scope) {
-        stored = saveQuestions(finalQuestions, {
+        stored = await saveQuestions(finalQuestions, {
           category,
           topic: scope.node.id,
           parentTopic: scope.node.parentId,

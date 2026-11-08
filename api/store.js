@@ -1,4 +1,4 @@
-const persistent = process.env.VERCEL !== "1";
+const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 
 const emptyStore = {
   saveQuestions() {
@@ -15,9 +15,13 @@ const emptyStore = {
   },
 };
 
-const store = persistent ? await import("./sqlite-store.js") : emptyStore;
+const store = databaseUrl
+  ? await import("./neon-store.js")
+  : process.env.VERCEL === "1"
+    ? emptyStore
+    : await import("./sqlite-store.js");
 
-export const questionsPersist = persistent;
+export const questionsPersist = Boolean(databaseUrl) || process.env.VERCEL !== "1";
 export const saveQuestions = store.saveQuestions;
 export const countByCategory = store.countByCategory;
 export const countByTopic = store.countByTopic;
