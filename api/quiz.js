@@ -1149,15 +1149,128 @@ function readMode(req) {
   return readParam(req, "mode");
 }
 
-function readCount(req, fallback) {
+function readCount(req, fallback, { min = 1, max = 15 } = {}) {
   const raw = Number(readParam(req, "count"));
   if (!Number.isInteger(raw)) return fallback;
-  return Math.min(15, Math.max(1, raw));
+  return Math.min(max, Math.max(min, raw));
 }
 
 function readTopic(req) {
   const text = String(readParam(req, "topic") || "").trim().toLowerCase();
   return /^[a-z0-9-]{1,40}$/.test(text) ? text : "";
+}
+
+function readMockSelections(req) {
+  const raw = String(readParam(req, "topics") || "").trim();
+  if (!raw) return [];
+  const seen = new Set();
+  const selections = [];
+  for (const part of raw.split(",")) {
+    const [categoryRaw, topicRaw] = part.split(":");
+    const category = normalizeCategoryId(categoryRaw);
+    const topicId = String(topicRaw || "")
+      .trim()
+      .toLowerCase();
+    if (!CATEGORY_IDS.includes(category) || !/^[a-z0-9-]{1,40}$/.test(topicId)) continue;
+    const key = `${category}:${topicId}`;
+    if (seen.has(key)) continue;
+    const scope = topicScope(category, topicId);
+    if (!scope) continue;
+    seen.add(key);
+    selections.push({
+      category,
+      topicId,
+      ids: scope.ids,
+      path: scope.path,
+      label: `${categoryLabel(category)} · ${scope.path}`,
+    });
+  }
+  return selections;
+}
+
+function categoryLabel(category) {
+  const labels = {
+    bangla: "বাংলা",
+    english: "ইংরেজি",
+    math: "গণিত",
+    gk: "সাধারণ জ্ঞান",
+    networks: "নেটওয়ার্ক",
+    dbms: "ডাটাবেজ",
+    dsa: "ডাটা স্ট্রাকচার",
+    os: "অপারেটিং সিস্টেম",
+    swe: "সফটওয়্যার",
+    energy: "জ্বালানি",
+  };
+  return labels[category] || category;
+}
+
+function splitQuotas(total, parts) {
+  if (parts <= 0) return [];
+  const base = Math.floor(total / parts);
+  const extra = total % parts;
+  return Array.from({ length: parts }, (_, index) => base + (index < extra ? 1 : 0));
+}
+
+function uniqueByQuestion(items) {
+  const seen = new Set();
+  const out = [];
+  for (const item of items) {
+    const key = String(item.question || "").trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
+}
+
+async function buildCustomMock(selections, count, org) {
+  const quotas = splitQuotas(count, selections.length);
+  const picked = [];
+
+  for (let index = 0; index < selections.length; index += 1) {
+    const selection = selections[index];
+    const want = quotas[index];
+    const rows = await practiceQuestions(selection.category, selection.ids, want);
+    picked.push(
+      ...rows.map((item) => ({
+        ...item,
+        topic: item.topic || selection.topicId,
+        topicLabel: item.topicLabel || selection.path,
+      })),
+    );
+  }
+
+  let questions = uniqueByQuestion(picked);
+  const fromSaved = questions.length;
+  const stillNeed = Math.max(0, count - questions.length);
+
+  if (stillNeed > 0) {
+    const categories = [...new Set(selections.map((item) => item.category))];
+    const seen = new Set(questions.map((item) => item.question));
+    const bankPool = shuffle(
+      pastPapers.filter((question) => {
+        const cat = CATEGORY_MAP[question.category] || String(question.category || "").toLowerCase();
+        const orgOk = org === "all" || (question.orgs || []).includes(org);
+        return categories.includes(cat) && orgOk && !seen.has(question.question);
+      }),
+    );
+    const padPool = bankPool.length
+      ? bankPool
+      : shuffle(matchingQuestions("mixed", org).filter((question) => !seen.has(question.question)));
+    const padded = padPool.slice(0, stillNeed).map((question) => ({
+      ...toPublicQuestion(question),
+      topicLabel: "ব্যাংক প্রশ্ন",
+    }));
+    questions = uniqueByQuestion(questions.concat(padded));
+  }
+
+  const finalQuestions = shuffle(questions).slice(0, count);
+  const savedInFinal = finalQuestions.filter((item) => String(item.source || "").includes("সংরক্ষিত")).length;
+  return {
+    questions: finalQuestions,
+    fromSaved: savedInFinal || Math.min(fromSaved, finalQuestions.length),
+    fromBank: Math.max(0, finalQuestions.length - (savedInFinal || Math.min(fromSaved, finalQuestions.length))),
+  };
 }
 
 function normalizeCategoryId(value) {
@@ -1561,6 +1674,28 @@ export default async function handler(req, res) {
     return;
   }
 
+  if (mode === "custom_mock") {
+    const selections = readMockSelections(req);
+    if (!selections.length) {
+      sendJson(res, 400, { error: "মক টেস্টের জন্য অন্তত একটি টপিক বেছে নিন।" });
+      return;
+    }
+    const count = readCount(req, 30, { min: 10, max: 50 });
+    const built = await buildCustomMock(selections, count, org);
+    if (!built.questions.length) {
+      sendJson(res, 404, {
+        error: "নির্বাচিত টপিকে সংরক্ষিত বা ব্যাংক প্রশ্ন পাওয়া যায়নি। আগে কিছু টপিকে এআই প্রশ্ন তৈরি করুন।",
+      });
+      return;
+    }
+    sendJson(res, 200, built.questions, {
+      "X-Quiz-Source": "custom_mock",
+      "X-Quiz-Saved": String(built.fromSaved),
+      "X-Quiz-Bank": String(built.fromBank),
+    });
+    return;
+  }
+
   if (mode === "past_papers") {
     const count = sessionSize(category, mode);
     const exact = matchingQuestions(category, org);
@@ -1619,6 +1754,6 @@ export default async function handler(req, res) {
   }
 
   sendJson(res, 400, {
-    error: "Use mode=past_papers, mode=dynamic_ai, mode=practice, mode=topics, mode=viva, or mode=catalog.",
+    error: "Use mode=past_papers, mode=dynamic_ai, mode=practice, mode=custom_mock, mode=topics, mode=viva, or mode=catalog.",
   });
 }
