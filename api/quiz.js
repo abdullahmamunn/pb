@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { topicScope, treeWithCounts } from "./topics.js";
-import { countByCategory, countByTopic, practiceQuestions, saveQuestions } from "./store.js";
+import { countByCategory, countByTopic, practiceQuestions, questionsPersist, saveQuestions } from "./store.js";
 
 export const config = {
   maxDuration: 60,
@@ -1520,6 +1520,7 @@ export default async function handler(req, res) {
       sendJson(res, 200, finalQuestions, {
         "X-Quiz-Source": generated.source,
         "X-Quiz-Stored": String(stored),
+        "X-Quiz-Persist": questionsPersist ? "1" : "0",
       });
     } catch (error) {
       console.error("All AI providers failed:", error);

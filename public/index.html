@@ -371,6 +371,7 @@
         topicLabel: "",
         count: 10,
         stored: 0,
+        persist: true,
         questions: [],
         index: 0,
         answers: [],
@@ -595,6 +596,7 @@
           }
           state.source = response.headers.get("X-Quiz-Source");
           state.stored = Number(response.headers.get("X-Quiz-Stored") || 0);
+          state.persist = response.headers.get("X-Quiz-Persist") !== "0";
           state.questions = data;
           state.answers = data.map(() => null);
           state.index = 0;
@@ -626,7 +628,9 @@
           freebuff: "Freebuff",
         };
         if (state.mode === "dynamic_ai" && state.topic) {
-          note.textContent = `“${state.topicLabel}” টপিকের ${bn(state.questions.length)}টি প্রশ্ন ডাটাবেজে আছে। নতুন যোগ হয়েছে ${bn(state.stored)}টি।`;
+          note.textContent = state.persist
+            ? `“${state.topicLabel}” টপিকের ${bn(state.questions.length)}টি প্রশ্ন ডাটাবেজে আছে। নতুন যোগ হয়েছে ${bn(state.stored)}টি।`
+            : `“${state.topicLabel}” টপিকের ${bn(state.questions.length)}টি প্রশ্ন এই টেস্টের জন্য তৈরি হয়েছে।`;
           note.classList.remove("hidden");
         } else if (state.mode === "practice") {
           note.textContent = `সংরক্ষিত প্রশ্ন থেকে “${state.topicLabel}” টপিকের অনুশীলন।`;

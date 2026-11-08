@@ -1,98 +1,24 @@
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { DatabaseSync } from "node:sqlite";
+const persistent = process.env.VERCEL !== "1";
 
-const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
-const dir = path.join(root, "data");
-fs.mkdirSync(dir, { recursive: true });
+const emptyStore = {
+  saveQuestions() {
+    return 0;
+  },
+  countByCategory() {
+    return { categories: {}, total: 0 };
+  },
+  countByTopic() {
+    return {};
+  },
+  practiceQuestions() {
+    return [];
+  },
+};
 
-const db = new DatabaseSync(path.join(dir, "questions.db"));
-db.exec(`
-  CREATE TABLE IF NOT EXISTS questions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    question TEXT NOT NULL,
-    options TEXT NOT NULL,
-    answer INTEGER NOT NULL,
-    explanation TEXT NOT NULL,
-    category TEXT NOT NULL,
-    topic TEXT NOT NULL,
-    parent_topic TEXT NOT NULL DEFAULT '',
-    topic_label TEXT NOT NULL DEFAULT '',
-    difficulty TEXT NOT NULL DEFAULT 'Medium',
-    source TEXT NOT NULL DEFAULT '',
-    created_at TEXT NOT NULL
-  );
-  CREATE UNIQUE INDEX IF NOT EXISTS questions_dedupe ON questions(category, topic, question);
-`);
+const store = persistent ? await import("./sqlite-store.js") : emptyStore;
 
-const insertQuestion = db.prepare(`
-  INSERT OR IGNORE INTO questions
-    (question, options, answer, explanation, category, topic, parent_topic, topic_label, difficulty, source, created_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-`);
-
-export function saveQuestions(questions, meta) {
-  const created = new Date().toISOString();
-  let saved = 0;
-  for (const item of questions) {
-    const result = insertQuestion.run(
-      item.question,
-      JSON.stringify(item.options),
-      item.answer,
-      item.explanation,
-      meta.category,
-      meta.topic,
-      meta.parentTopic || "",
-      meta.topicLabel || "",
-      item.difficulty || "Medium",
-      meta.source || "",
-      created,
-    );
-    saved += result.changes || 0;
-  }
-  return saved;
-}
-
-export function countByCategory() {
-  const rows = db.prepare("SELECT category, COUNT(*) AS total FROM questions GROUP BY category").all();
-  const categories = {};
-  let total = 0;
-  for (const row of rows) {
-    categories[row.category] = row.total;
-    total += row.total;
-  }
-  return { categories, total };
-}
-
-export function countByTopic() {
-  const rows = db.prepare("SELECT category, topic, COUNT(*) AS total FROM questions GROUP BY category, topic").all();
-  const counts = {};
-  for (const row of rows) counts[`${row.category}:${row.topic}`] = row.total;
-  return counts;
-}
-
-export function practiceQuestions(category, topicIds, limit) {
-  if (!topicIds.length) return [];
-  const marks = topicIds.map(() => "?").join(", ");
-  const rows = db
-    .prepare(
-      `SELECT question, options, answer, explanation, category, topic, topic_label, difficulty, source
-       FROM questions
-       WHERE category = ? AND topic IN (${marks})
-       ORDER BY RANDOM()
-       LIMIT ?`,
-    )
-    .all(category, ...topicIds, limit);
-  return rows.map((row) => ({
-    question: row.question,
-    options: JSON.parse(row.options),
-    answer: row.answer,
-    explanation: row.explanation,
-    category: row.category,
-    topic: row.topic,
-    topicLabel: row.topic_label,
-    difficulty: row.difficulty,
-    source: row.source ? `সংরক্ষিত · ${row.source}` : "সংরক্ষিত প্রশ্ন",
-  }));
-}
+export const questionsPersist = persistent;
+export const saveQuestions = store.saveQuestions;
+export const countByCategory = store.countByCategory;
+export const countByTopic = store.countByTopic;
+export const practiceQuestions = store.practiceQuestions;
