@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { topicScope, treeWithCounts } from "./topics.js";
 import { countByCategory, countByTopic, practiceQuestions, questionsPersist, saveQuestions } from "./store.js";
+import { vivaCatalog, vivaSession } from "./viva.js";
 
 export const config = {
   maxDuration: 60,
@@ -1462,6 +1463,20 @@ export default async function handler(req, res) {
     return;
   }
 
+  if (mode === "viva") {
+    if (!topicId) {
+      sendJson(res, 200, vivaCatalog(), { "X-Quiz-Source": "viva" });
+      return;
+    }
+    const session = vivaSession(topicId);
+    if (!session) {
+      sendJson(res, 400, { error: "এই ভাইভা বিষয় নেই।" });
+      return;
+    }
+    sendJson(res, 200, session, { "X-Quiz-Source": "viva" });
+    return;
+  }
+
   if (topicId && !scope) {
     sendJson(res, 400, { error: "এই বিষয়ে এই টপিক নেই।" });
     return;
@@ -1534,6 +1549,6 @@ export default async function handler(req, res) {
   }
 
   sendJson(res, 400, {
-    error: "Use mode=past_papers, mode=dynamic_ai, mode=practice, mode=topics, or mode=catalog.",
+    error: "Use mode=past_papers, mode=dynamic_ai, mode=practice, mode=topics, mode=viva, or mode=catalog.",
   });
 }

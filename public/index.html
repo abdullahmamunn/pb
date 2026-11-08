@@ -200,6 +200,83 @@
             <svg viewBox="0 0 24 24" class="h-4 w-4" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
           </button>
         </div>
+
+        <section id="viva-section" class="mt-10">
+          <div class="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p class="text-sm font-bold tracking-wide text-slate-500">মৌখিক · ১০ নম্বর</p>
+              <h2 class="mt-1 text-2xl font-bold text-slate-950">Viva Practice</h2>
+              <p class="mt-1 max-w-2xl text-sm leading-6 text-slate-500">বোর্ডের মতো প্রশ্ন। আগে মুখে উত্তর বলুন, তারপর মডেল উত্তর দেখে নিজে ঠিক করুন পেরেছেন কি না।</p>
+            </div>
+            <p id="viva-total" class="text-sm font-semibold text-slate-600">ভাইভা লোড হচ্ছে…</p>
+          </div>
+          <div id="viva-topics" class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"></div>
+          <div class="mt-4 flex flex-col gap-4 rounded-2xl border border-emerald-200 bg-white px-5 py-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <div>
+              <p class="text-[11px] font-bold tracking-wide text-[#0f8a4b]">FULL MOCK</p>
+              <h3 class="mt-1 text-xl font-bold">পূর্ণাঙ্গ মক ভাইভা</h3>
+              <p id="viva-mock-copy" class="mt-1 text-sm leading-6 text-slate-500">পাঁচটি বিষয় থেকে দশটি প্রশ্ন।</p>
+            </div>
+            <button type="button" id="viva-mock" class="inline-flex shrink-0 items-center justify-center rounded-full bg-[#0f8a4b] px-5 py-3 text-sm font-bold text-white hover:bg-emerald-700">মক ভাইভা শুরু</button>
+          </div>
+          <p id="viva-error" class="mt-4 hidden rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-800"></p>
+        </section>
+      </section>
+
+      <section id="view-viva" class="mx-auto hidden max-w-3xl">
+        <p class="text-sm font-semibold text-[#0f8a4b]">Viva Practice · মৌখিক ১০</p>
+        <div class="mt-2 flex flex-wrap items-end justify-between gap-3">
+          <h2 id="viva-title" class="text-2xl font-bold text-slate-950"></h2>
+          <p id="viva-counter" class="text-sm font-semibold text-slate-500"></p>
+        </div>
+        <div class="mt-4 mb-5 h-1.5 overflow-hidden rounded-full bg-slate-200">
+          <div id="viva-progress" class="h-full rounded-full bg-[#0f8a4b]"></div>
+        </div>
+        <div id="viva-practice">
+          <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+            <div class="flex flex-wrap gap-2">
+              <span id="viva-topic" class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800"></span>
+              <span id="viva-speak" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600"></span>
+            </div>
+            <p class="mt-4 text-xs font-bold tracking-wide text-slate-400">বোর্ড প্রশ্ন</p>
+            <h3 id="viva-question" class="mt-2 whitespace-pre-wrap text-xl font-bold leading-8 text-slate-950 sm:text-2xl"></h3>
+            <p class="mt-4 text-sm leading-6 text-slate-500">উত্তর আগে মুখে বলুন। তারপর মডেল উত্তর খুলুন।</p>
+            <button type="button" id="viva-reveal" class="mt-5 min-h-12 rounded-2xl bg-[#0f8a4b] px-5 text-sm font-semibold text-white hover:bg-emerald-700">মডেল উত্তর দেখুন</button>
+            <div id="viva-answer" class="mt-5 hidden rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+              <p class="text-xs font-bold tracking-wide text-emerald-800">মডেল উত্তর</p>
+              <p id="viva-answer-text" class="mt-2 whitespace-pre-wrap text-sm leading-7 text-emerald-950"></p>
+              <p id="viva-note" class="mt-3 hidden text-sm leading-6 text-emerald-800"></p>
+              <div class="mt-4 grid gap-2 sm:grid-cols-2">
+                <button type="button" id="viva-known" class="min-h-12 rounded-2xl bg-[#0f8a4b] px-3 text-sm font-semibold text-white hover:bg-emerald-700">বলতে পেরেছি</button>
+                <button type="button" id="viva-review" class="min-h-12 rounded-2xl border border-amber-300 bg-white px-3 text-sm font-semibold text-amber-800 hover:bg-amber-50">আবার পড়ব</button>
+              </div>
+            </div>
+          </article>
+          <button type="button" id="viva-stop" class="mt-4 min-h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">এখানেই শেষ করুন</button>
+        </div>
+        <div id="viva-summary" class="hidden">
+          <h3 class="text-3xl font-bold text-slate-950">মক ভাইভা শেষ</h3>
+          <p id="viva-summary-copy" class="mt-2 text-sm leading-6 text-slate-500"></p>
+          <div class="mt-6 grid gap-3 sm:grid-cols-3">
+            <article class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+              <p class="text-xs text-emerald-800">বলতে পেরেছি</p>
+              <p id="viva-known-count" class="mt-1 text-3xl font-bold"></p>
+            </article>
+            <article class="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <p class="text-xs text-amber-800">আবার পড়ব</p>
+              <p id="viva-review-count" class="mt-1 text-3xl font-bold"></p>
+            </article>
+            <article class="rounded-2xl border border-slate-200 bg-white p-4">
+              <p class="text-xs text-slate-500">বাদ পড়েছে</p>
+              <p id="viva-skip-count" class="mt-1 text-3xl font-bold"></p>
+            </article>
+          </div>
+          <div id="viva-review-list" class="mt-6 grid gap-3"></div>
+          <div class="mt-6 flex flex-wrap gap-2">
+            <button type="button" id="viva-again" class="min-h-12 rounded-2xl bg-[#0f8a4b] px-5 text-sm font-semibold text-white hover:bg-emerald-700">আবার শুরু</button>
+            <button type="button" id="viva-home" class="min-h-12 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 hover:bg-slate-50">হোমে ফিরুন</button>
+          </div>
+        </div>
       </section>
 
       <section id="view-quiz" class="hidden mx-auto max-w-3xl">
@@ -354,6 +431,7 @@
       const viewSetup = document.getElementById("view-setup");
       const viewQuiz = document.getElementById("view-quiz");
       const viewResult = document.getElementById("view-result");
+      const viewViva = document.getElementById("view-viva");
       const loading = document.getElementById("loading");
       const modal = document.getElementById("modal");
       const chooser = document.getElementById("chooser");
@@ -377,6 +455,7 @@
         answers: [],
         filter: "all",
       };
+      const viva = { id: "", label: "", items: [], index: 0, marks: [], revealed: false };
 
       function bn(value) {
         return Number(value).toLocaleString("bn-BD");
@@ -387,7 +466,11 @@
         viewSetup.classList.toggle("hidden", view !== "setup");
         viewQuiz.classList.toggle("hidden", view !== "quiz");
         viewResult.classList.toggle("hidden", view !== "result");
-        if (view === "setup") loadCatalog();
+        viewViva.classList.toggle("hidden", view !== "viva");
+        if (view === "setup") {
+          loadCatalog();
+          loadViva();
+        }
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
 
@@ -538,6 +621,142 @@
           });
           root.append(button);
         });
+      }
+
+      function vivaCard(topic) {
+        const article = document.createElement("article");
+        article.className = "flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm";
+        const badge = document.createElement("span");
+        badge.className = "w-fit rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800";
+        badge.textContent = "মৌখিক";
+        const title = document.createElement("h3");
+        title.className = "mt-4 text-lg font-bold";
+        title.textContent = topic.label;
+        const copy = document.createElement("p");
+        copy.className = "mt-1 text-sm leading-6 text-slate-500";
+        copy.textContent = topic.blurb;
+        const row = document.createElement("div");
+        row.className = "mt-5 flex items-center justify-between";
+        const count = document.createElement("span");
+        count.className = "text-sm text-slate-400";
+        count.textContent = `${bn(topic.count)}টি প্রশ্ন`;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "text-sm font-semibold text-[#0f8a4b] hover:text-emerald-800";
+        button.textContent = "শুরু করুন →";
+        button.addEventListener("click", () => startViva(topic.id));
+        row.append(count, button);
+        article.append(badge, title, copy, row);
+        return article;
+      }
+
+      async function loadViva() {
+        const error = document.getElementById("viva-error");
+        try {
+          const response = await fetch("/api/quiz?mode=viva");
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || "ভাইভা লোড হয়নি।");
+          const root = document.getElementById("viva-topics");
+          root.replaceChildren(...(data.topics || []).map(vivaCard));
+          document.getElementById("viva-total").textContent = `মোট ${bn(data.total || 0)}টি মডেল প্রশ্ন`;
+          const mock = data.mock || {};
+          document.getElementById("viva-mock-copy").textContent = mock.blurb || "পাঁচটি বিষয় থেকে দশটি প্রশ্ন।";
+          error.classList.add("hidden");
+        } catch (cause) {
+          error.textContent = cause.message || "ভাইভা বিষয় লোড হয়নি।";
+          error.classList.remove("hidden");
+        }
+      }
+
+      async function startViva(topic) {
+        const error = document.getElementById("viva-error");
+        error.classList.add("hidden");
+        setLoading(true, "ভাইভা সাজানো হচ্ছে…");
+        try {
+          const response = await fetch(`/api/quiz?mode=viva&topic=${encodeURIComponent(topic)}`);
+          const data = await response.json();
+          if (!response.ok || !Array.isArray(data.questions) || data.questions.length === 0) {
+            throw new Error(data.error || "ভাইভা প্রশ্ন পাওয়া যায়নি।");
+          }
+          viva.id = data.id;
+          viva.label = data.label;
+          viva.items = data.questions;
+          viva.index = 0;
+          viva.marks = data.questions.map(() => null);
+          viva.revealed = false;
+          closeChooser();
+          closeTopics();
+          show("viva");
+          renderViva();
+        } catch (cause) {
+          error.textContent = cause.message || "ভাইভা শুরু করা যায়নি।";
+          error.classList.remove("hidden");
+          show("setup");
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      function renderViva() {
+        const item = viva.items[viva.index];
+        document.getElementById("viva-practice").classList.remove("hidden");
+        document.getElementById("viva-summary").classList.add("hidden");
+        document.getElementById("viva-title").textContent = viva.label;
+        document.getElementById("viva-counter").textContent = `প্রশ্ন ${bn(viva.index + 1)} / ${bn(viva.items.length)}`;
+        document.getElementById("viva-progress").style.width = `${((viva.index + (viva.revealed ? 1 : 0)) / viva.items.length) * 100}%`;
+        document.getElementById("viva-topic").textContent = item.topicLabel || viva.label;
+        document.getElementById("viva-speak").textContent = item.speak === "en" ? "ইংরেজিতে বলুন" : "বাংলায় বলুন";
+        document.getElementById("viva-question").textContent = item.question;
+        const answer = document.getElementById("viva-answer");
+        const note = document.getElementById("viva-note");
+        answer.classList.toggle("hidden", !viva.revealed);
+        document.getElementById("viva-reveal").classList.toggle("hidden", viva.revealed);
+        document.getElementById("viva-answer-text").textContent = item.answer;
+        note.textContent = item.note || "";
+        note.classList.toggle("hidden", !item.note);
+      }
+
+      function markViva(mark) {
+        viva.marks[viva.index] = mark;
+        if (viva.index === viva.items.length - 1) {
+          renderVivaSummary();
+          return;
+        }
+        viva.index += 1;
+        viva.revealed = false;
+        renderViva();
+      }
+
+      function renderVivaSummary() {
+        document.getElementById("viva-practice").classList.add("hidden");
+        document.getElementById("viva-summary").classList.remove("hidden");
+        const known = viva.marks.filter((mark) => mark === "known").length;
+        const review = viva.marks.filter((mark) => mark === "review").length;
+        const skipped = viva.marks.filter((mark) => mark === null).length;
+        document.getElementById("viva-known-count").textContent = bn(known);
+        document.getElementById("viva-review-count").textContent = bn(review);
+        document.getElementById("viva-skip-count").textContent = bn(skipped);
+        document.getElementById("viva-summary-copy").textContent = `${viva.label}: ${bn(known)}টি বলতে পেরেছেন, ${bn(review)}টি আবার পড়বেন। এটি অনুশীলনের হিসাব। অফিসিয়াল মৌখিক ১০ নম্বর আলাদা।`;
+        const list = document.getElementById("viva-review-list");
+        list.replaceChildren();
+        viva.items.forEach((item, index) => {
+          if (viva.marks[index] !== "review") return;
+          const card = document.createElement("article");
+          card.className = "rounded-2xl border border-amber-200 bg-white p-4";
+          const topic = document.createElement("p");
+          topic.className = "text-xs font-semibold text-amber-800";
+          topic.textContent = item.topicLabel || viva.label;
+          const question = document.createElement("h3");
+          question.className = "mt-2 font-bold leading-7";
+          question.textContent = item.question;
+          const answer = document.createElement("p");
+          answer.className = "mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-600";
+          answer.textContent = item.answer;
+          card.append(topic, question, answer);
+          list.append(card);
+        });
+        document.getElementById("viva-progress").style.width = "100%";
+        window.scrollTo({ top: 0, behavior: "smooth" });
       }
 
       async function loadCatalog() {
@@ -853,8 +1072,19 @@
       document.getElementById("chooser-close").addEventListener("click", closeChooser);
       document.getElementById("go-subjects").addEventListener("click", () => {
         closeChooser();
+        closeTopics();
         show("setup");
       });
+      document.getElementById("viva-mock").addEventListener("click", () => startViva("mock"));
+      document.getElementById("viva-reveal").addEventListener("click", () => {
+        viva.revealed = true;
+        renderViva();
+      });
+      document.getElementById("viva-known").addEventListener("click", () => markViva("known"));
+      document.getElementById("viva-review").addEventListener("click", () => markViva("review"));
+      document.getElementById("viva-stop").addEventListener("click", renderVivaSummary);
+      document.getElementById("viva-again").addEventListener("click", () => startViva(viva.id));
+      document.getElementById("viva-home").addEventListener("click", () => show("setup"));
       document.getElementById("btn-prev").addEventListener("click", goPrev);
       document.getElementById("btn-skip").addEventListener("click", skipQuestion);
       document.getElementById("btn-next").addEventListener("click", goNext);
@@ -887,6 +1117,7 @@
       });
 
       loadCatalog();
+      loadViva();
     </script>
   </body>
 </html>
