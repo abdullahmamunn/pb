@@ -79,6 +79,16 @@ export const TOPIC_TREE = {
         { id: "constitution", label: "সংবিধান ও জাতীয় বিষয়" },
       ],
     },
+    {
+      id: "current-affairs",
+      label: "সাম্প্রতিক ঘটনাবলি",
+      children: [
+        { id: "ca-bangladesh", label: "বাংলাদেশ" },
+        { id: "ca-international", label: "আন্তর্জাতিক" },
+        { id: "ca-economy", label: "অর্থনীতি ও বাজেট" },
+        { id: "ca-energy", label: "জ্বালানি ও পেট্রোলিয়াম" },
+      ],
+    },
     { id: "international", label: "আন্তর্জাতিক বিষয়াবলি" },
     { id: "general-science", label: "সাধারণ বিজ্ঞান" },
   ],

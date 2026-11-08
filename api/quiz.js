@@ -1035,9 +1035,22 @@ const CATEGORY_BRIEF = {
   bangla: "Bangla language and literature for a Bangladesh recruitment MCQ: synonyms, antonyms, idioms, one-word substitution, sandhi, samas, and major writers. Write the question and options in Bengali.",
   english: "English grammar and vocabulary for a Bangladesh recruitment MCQ: synonyms, antonyms, articles, prepositions, tense, voice, narration, conditionals, and idioms. Write the question and options in English.",
   math: "Arithmetic and mental ability for a Bangladesh recruitment MCQ: number system, LCM and HCF, unitary method, work and time, profit and loss, percentage, ratio, average, series, and simple reasoning. Write the question and options in Bengali.",
-  gk: "General knowledge for a Bangladesh recruitment MCQ: Bangladesh affairs, Liberation War, Language Movement, international affairs, and everyday general science. Write the question and options in Bengali.",
+  gk: "General knowledge for a Bangladesh recruitment MCQ: Bangladesh affairs, Liberation War, Language Movement, recent current affairs, international affairs, and everyday general science. Write the question and options in Bengali.",
   mixed: "A full Petrobangla engineering paper mix: Bangla, English, mathematics and mental ability, general knowledge, networks, DBMS, DSA, operating systems, software engineering, and Petrobangla energy. Use at least six different category ids.",
 };
+
+const CURRENT_AFFAIRS_TOPIC_IDS = new Set([
+  "current-affairs",
+  "ca-bangladesh",
+  "ca-international",
+  "ca-economy",
+  "ca-energy",
+]);
+
+function isCurrentAffairsScope(scope) {
+  if (!scope?.ids?.length) return false;
+  return scope.ids.some((id) => CURRENT_AFFAIRS_TOPIC_IDS.has(id));
+}
 
 const ORG_BRIEF = {
   all: "Bangladesh government recruitment exams, including Petrobangla, the Department of ICT, BCS, and state banks.",
@@ -1047,7 +1060,7 @@ const ORG_BRIEF = {
   bank: "state-owned bank IT officer, data-entry, and computer-operator exams.",
 };
 
-function buildPrompt(category, org, count, topicPath) {
+function buildPrompt(category, org, count, topicPath, { useSearch = false, recentAffairs = false } = {}) {
   const easy = Math.max(0, Math.round(count * 0.2));
   const medium = Math.max(0, Math.round(count * 0.3));
   const hard = Math.max(1, count - easy - medium);
@@ -1055,11 +1068,25 @@ function buildPrompt(category, org, count, topicPath) {
     ? "Write each question and its four options in English. Write explanations in Bengali."
     : "Write each question, its options, and its explanation in natural Bangladeshi exam Bengali.";
   const topicLine = topicPath ? `Topic: ${topicPath}. Every question must be specifically about this topic.` : "";
+  const today = new Date().toISOString().slice(0, 10);
+  const affairsMode = useSearch || recentAffairs;
+  const searchBlock = affairsMode
+    ? `
+Current-affairs mode (today: ${today}):
+${useSearch
+    ? "- Use Google Search for verifiable events from roughly the last 12 months that appear in Bangladesh job exams."
+    : "- Focus on well-known recent events from roughly the last 12 months that appear in Bangladesh job exams. Prefer widely reported facts only."}
+- Prefer Bangladesh news, major international events, economy/budget/inflation, and energy/oil-gas/LNG when the topic asks for them.
+- Every question needs a clear time anchor (month/year or exact date).
+- Do not invent names, numbers, awards, rankings, or events. If a fact is uncertain, choose another verified fact.
+- Explanations should briefly state when the event happened.`
+    : "";
   return `You set multiple-choice questions for Bangladesh government recruitment, including Petrobangla Assistant Manager (CSE/IT).
 
 Exam focus: ${ORG_BRIEF[org] || ORG_BRIEF.all}
 Subject: ${CATEGORY_BRIEF[category] || CATEGORY_BRIEF.mixed}
 ${topicLine}
+${searchBlock}
 
 Create exactly ${count} original MCQs.
 ${language}
@@ -1073,6 +1100,15 @@ Rules:
 - If the subject is not mixed, every question must use that one category id.
 - difficulty must be exactly Easy, Medium, or Hard.
 - Return only the JSON array.`;
+}
+
+function isQuotaError(error) {
+  const text = String(error?.message || error || "");
+  return /429|RESOURCE_EXHAUSTED|quota|rate.?limit/i.test(text);
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function shuffle(items) {
@@ -1267,25 +1303,34 @@ function questionsFromText(text, minimum, name) {
   return questions;
 }
 
-async function askGemini(prompt, minimum, withSchema) {
+async function askGemini(prompt, minimum, { withSchema = false, useSearch = false } = {}) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 25000);
+  const timer = setTimeout(() => controller.abort(), useSearch ? 55000 : 25000);
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     const config = {
-      temperature: 0.7,
+      temperature: useSearch ? 0.4 : 0.7,
       maxOutputTokens: 8192,
-      responseMimeType: "application/json",
       thinkingConfig: { thinkingBudget: 0 },
       abortSignal: controller.signal,
     };
-    if (withSchema) config.responseSchema = responseSchema();
+    // Google Search grounding does not combine reliably with JSON schema mode.
+    if (useSearch) {
+      config.tools = [{ googleSearch: {} }];
+    } else {
+      config.responseMimeType = "application/json";
+      if (withSchema) config.responseSchema = responseSchema();
+    }
     const response = await ai.models.generateContent({
-      model: process.env.GEMINI_MODEL || "gemini-3.1-flash-lite",
+      model:
+        (useSearch && process.env.GEMINI_SEARCH_MODEL) ||
+        process.env.GEMINI_MODEL ||
+        "gemini-3.1-flash-lite",
       contents: prompt,
       config,
     });
-    return questionsFromText(response.text, minimum, "Gemini");
+    const label = useSearch ? "Gemini Search" : "Gemini";
+    return questionsFromText(response.text, minimum, label);
   } finally {
     clearTimeout(timer);
   }
@@ -1400,18 +1445,35 @@ function fallbackProviders(minimum) {
   return providers;
 }
 
-async function generateDynamicQuestions(category, org, count, topicPath) {
-  const prompt = buildPrompt(category, org, count, topicPath);
+async function generateDynamicQuestions(category, org, count, topicPath, { useSearch = false } = {}) {
   const minimum = count < 5 ? count : Math.max(5, count - 2);
   const errors = [];
+  const plainPrompt = buildPrompt(category, org, count, topicPath, {
+    useSearch: false,
+    recentAffairs: useSearch,
+  });
 
   if (process.env.GEMINI_API_KEY) {
+    if (useSearch) {
+      try {
+        const searchPrompt = buildPrompt(category, org, count, topicPath, { useSearch: true });
+        return {
+          questions: await askGemini(searchPrompt, minimum, { withSchema: false, useSearch: true }),
+          source: "gemini-search",
+        };
+      } catch (error) {
+        errors.push(error);
+        console.error("Gemini Search grounding failed:", error);
+        if (isQuotaError(error)) await sleep(1500);
+      }
+    }
+
     try {
-      return { questions: await askGemini(prompt, minimum, true), source: "gemini" };
+      return { questions: await askGemini(plainPrompt, minimum, { withSchema: true }), source: "gemini" };
     } catch (schemaError) {
       console.error("Structured Gemini request failed, retrying without schema:", schemaError);
       try {
-        return { questions: await askGemini(prompt, minimum, false), source: "gemini" };
+        return { questions: await askGemini(plainPrompt, minimum, { withSchema: false }), source: "gemini" };
       } catch (error) {
         errors.push(error);
         console.error("Gemini failed:", error);
@@ -1423,7 +1485,7 @@ async function generateDynamicQuestions(category, org, count, topicPath) {
 
   for (const provider of fallbackProviders(minimum)) {
     try {
-      const questions = await completeChat({ ...provider, prompt });
+      const questions = await completeChat({ ...provider, prompt: plainPrompt });
       return { questions, source: provider.name };
     } catch (error) {
       errors.push(error);
@@ -1431,7 +1493,9 @@ async function generateDynamicQuestions(category, org, count, topicPath) {
     }
   }
 
-  throw new Error(errors.map((error) => error.message).join("; ") || "No AI provider is configured");
+  const err = new Error(errors.map((error) => error.message).join("; ") || "No AI provider is configured");
+  err.quota = errors.some(isQuotaError);
+  throw err;
 }
 
 export default async function handler(req, res) {
@@ -1513,7 +1577,8 @@ export default async function handler(req, res) {
   if (mode === "dynamic_ai") {
     const count = readCount(req, sessionSize(category, mode));
     try {
-      const generated = await generateDynamicQuestions(category, org, count, scope?.path || "");
+      const useSearch = isCurrentAffairsScope(scope);
+      const generated = await generateDynamicQuestions(category, org, count, scope?.path || "", { useSearch });
       const questions = generated.questions.map((item) => ({ ...item, category: scope ? category : item.category }));
       const focused = category === "mixed" ? questions : questions.filter((item) => item.category === category);
       const usable = focused.length >= Math.min(5, count) ? focused : questions;
@@ -1540,7 +1605,12 @@ export default async function handler(req, res) {
     } catch (error) {
       console.error("All AI providers failed:", error);
       if (scope) {
-        sendJson(res, 502, { error: "এই টপিকের এআই প্রশ্ন তৈরি হয়নি। একটু পরে আবার চেষ্টা করুন।" });
+        const quota = error?.quota || isQuotaError(error);
+        sendJson(res, 502, {
+          error: quota
+            ? "Gemini API কোটা/রেট লিমিট শেষ। কিছুক্ষণ পর আবার চেষ্টা করুন, অথবা AI Studio-তে কোটা দেখুন।"
+            : "এই টপিকের এআই প্রশ্ন তৈরি হয়নি। একটু পরে আবার চেষ্টা করুন।",
+        });
         return;
       }
       sendJson(res, 200, sampleQuestions(category, org, count), { "X-Quiz-Source": "fallback" });
