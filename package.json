@@ -1,0 +1,16 @@
+{
+  "name": "petrobangla-assistant-manager-exam",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Petrobangla Assistant Manager (CSE/IT) exam practice system for Vercel.",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "@google/genai": "1.0.0"
+  }
+}
