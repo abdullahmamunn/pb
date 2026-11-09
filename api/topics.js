@@ -9,6 +9,10 @@ export const TOPIC_TREE = {
         { id: "karok", label: "কারক-বিভক্তি" },
         { id: "natwa-satwa", label: "ণত্ব ও ষত্ব বিধান" },
         { id: "spelling", label: "শুদ্ধ বানান" },
+        { id: "synonym", label: "সমার্থক শব্দ" },
+        { id: "antonym", label: "বিপরীতার্থক শব্দ" },
+        { id: "idiom-bn", label: "বাগ্ধারা" },
+        { id: "oneword", label: "এক কথায় প্রকাশ" },
       ],
     },
     {
@@ -17,17 +21,39 @@ export const TOPIC_TREE = {
       children: [
         { id: "rabindranath", label: "রবীন্দ্রনাথ ঠাকুর" },
         { id: "nazrul", label: "কাজী নজরুল ইসলাম" },
+        { id: "jasimuddin", label: "জসীমউদ্‌দীন" },
+        { id: "modern-lit", label: "আধুনিক সাহিত্য" },
+        { id: "medieval-lit", label: "প্রাচীন ও মধ্যযুগ" },
         { id: "other-writers", label: "অন্যান্য প্রধান লেখক" },
       ],
     },
   ],
   english: [
-    { id: "error-detection", label: "Error detection / Sentence correction" },
-    { id: "preposition", label: "Appropriate prepositions" },
+    {
+      id: "vocabulary",
+      label: "Vocabulary",
+      children: [
+        { id: "en-synonym", label: "Synonyms" },
+        { id: "en-antonym", label: "Antonyms" },
+      ],
+    },
+    {
+      id: "grammar",
+      label: "Grammar",
+      children: [
+        { id: "error-detection", label: "Error detection / Sentence correction" },
+        { id: "preposition", label: "Appropriate prepositions" },
+        { id: "subject-verb", label: "Subject-verb agreement" },
+        { id: "pronouns", label: "Subjective / objective pronouns" },
+        { id: "parts-speech", label: "Parts of speech & analogies" },
+        { id: "tense", label: "Tense" },
+        { id: "article", label: "Article" },
+        { id: "voice", label: "Voice" },
+        { id: "narration", label: "Narration" },
+        { id: "conditional", label: "Conditional" },
+      ],
+    },
     { id: "idiom-en", label: "Idioms and phrases" },
-    { id: "subject-verb", label: "Subject-verb agreement" },
-    { id: "pronouns", label: "Subjective / objective pronouns" },
-    { id: "parts-speech", label: "Parts of speech & analogies" },
   ],
   math: [
     {
@@ -39,6 +65,9 @@ export const TOPIC_TREE = {
         { id: "mixture", label: "Mixtures & alligations" },
         { id: "speed", label: "Time, speed & distance" },
         { id: "work", label: "Work & time" },
+        { id: "lcm", label: "ল.সা.গু. ও গ.সা.গু." },
+        { id: "average", label: "গড়" },
+        { id: "unitary", label: "ঐকিক নিয়ম" },
       ],
     },
     {
@@ -47,6 +76,14 @@ export const TOPIC_TREE = {
       children: [
         { id: "linear-eq", label: "Linear equations" },
         { id: "number-theory", label: "Number theory basics" },
+      ],
+    },
+    {
+      id: "mental",
+      label: "মেন্টাল অ্যাবিলিটি",
+      children: [
+        { id: "series", label: "সংখ্যা ধারা" },
+        { id: "reasoning", label: "যুক্তি ও ধাঁধা" },
       ],
     },
   ],
@@ -58,15 +95,18 @@ export const TOPIC_TREE = {
         { id: "pb-companies", label: "পেট্রোবাংলা ও অধীন কোম্পানি" },
         { id: "gas-fields", label: "গ্যাসক্ষেত্র ও ভূগোল" },
         { id: "energy-stats", label: "জাতীয় জ্বালানি পরিসংখ্যান ও এলএনজি" },
-        { id: "power-plants", label: "বিদ্যুৎকেন্দ্র ও আঞ্চলিক গ্রিড" },
-      ],
-    },
+          { id: "power-plants", label: "বিদ্যুৎকেন্দ্র ও আঞ্চলিক গ্রিড" },
+          { id: "pipeline", label: "সঞ্চালন ও বিতরণ" },
+          { id: "scada", label: "SCADA ও আইটি" },
+        ],
+      },
     {
       id: "bd-history",
       label: "বাংলাদেশ ইতিহাস ও মেগা প্রকল্প",
       children: [
         { id: "language-movement", label: "ভাষা আন্দোলন" },
         { id: "liberation", label: "মুক্তিযুদ্ধ ১৯৭১" },
+        { id: "constitution", label: "সংবিধান ও জাতীয় বিষয়" },
         { id: "mega-projects", label: "জাতীয় মেগা প্রকল্প" },
       ],
     },
@@ -80,6 +120,8 @@ export const TOPIC_TREE = {
         { id: "ca-energy", label: "জ্বালানি ও পেট্রোলিয়াম" },
       ],
     },
+    { id: "international", label: "আন্তর্জাতিক বিষয়াবলি" },
+    { id: "general-science", label: "সাধারণ বিজ্ঞান" },
   ],
   dsa: [
     {
@@ -105,8 +147,10 @@ export const TOPIC_TREE = {
       children: [
         { id: "bst", label: "Binary search trees (BST)" },
         { id: "tree-traversal", label: "Tree traversals" },
+        { id: "graph", label: "Graph" },
       ],
     },
+    { id: "sorting", label: "Sorting ও Complexity" },
   ],
   dbms: [
     { id: "sql-agg", label: "SQL aggregates, GROUP BY, HAVING" },
@@ -114,6 +158,7 @@ export const TOPIC_TREE = {
     { id: "normalization", label: "Normalization (1NF–BCNF)" },
     { id: "er-diagram", label: "ER diagram modeling" },
     { id: "acid", label: "ACID & concurrency basics" },
+    { id: "indexing", label: "Indexing" },
   ],
   networks: [
     { id: "subnet", label: "IP subnetting / VLSM" },
@@ -121,33 +166,28 @@ export const TOPIC_TREE = {
     { id: "transport", label: "TCP handshake, UDP, windowing" },
     { id: "app-protocols", label: "HTTP, HTTPS, DNS, DHCP, FTP" },
     { id: "routing", label: "RIP, OSPF, BGP" },
+    { id: "security", label: "Cryptography ও Firewall" },
   ],
   swe: [
     { id: "oop", label: "OOP pillars" },
     { id: "uml", label: "UML use case & sequence" },
     { id: "sdlc", label: "SDLC: Agile & Waterfall" },
+    { id: "testing", label: "Testing" },
   ],
   digital: [
     { id: "kmap", label: "K-map minimization (3/4 variable)" },
     { id: "logic-gates", label: "Logic gates & combinational circuits" },
     { id: "pigeonhole", label: "Pigeonhole principle & combinatorics" },
   ],
-  // Kept for older bank questions / saved rows
   os: [
     { id: "scheduling", label: "Process Scheduling" },
     { id: "deadlock", label: "Deadlock" },
     { id: "memory", label: "Memory ও Paging" },
   ],
-  energy: [
-    { id: "companies", label: "পেট্রোবাংলার কোম্পানি" },
-    { id: "fields", label: "গ্যাসক্ষেত্র" },
-    { id: "pipeline", label: "সঞ্চালন ও বিতরণ" },
-    { id: "scada", label: "SCADA ও আইটি" },
-  ],
 };
 
 export const NON_DEPT_CATEGORIES = ["bangla", "english", "math", "gk"];
-export const DEPT_CATEGORIES = ["dsa", "dbms", "networks", "swe", "digital"];
+export const DEPT_CATEGORIES = ["dsa", "dbms", "networks", "swe", "digital", "os"];
 
 export function findTopic(category, topicId) {
   function walk(nodes, parent) {
@@ -192,4 +232,16 @@ export function treeWithCounts(counts) {
   return Object.fromEntries(
     Object.entries(TOPIC_TREE).map(([category, nodes]) => [category, decorate(category, nodes)]),
   );
+}
+
+export function allTopicIds(category) {
+  const ids = [];
+  function walk(nodes) {
+    for (const node of nodes || []) {
+      ids.push(node.id);
+      walk(node.children);
+    }
+  }
+  walk(TOPIC_TREE[category]);
+  return ids;
 }

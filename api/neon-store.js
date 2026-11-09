@@ -1,4 +1,5 @@
 import { neon } from "@neondatabase/serverless";
+import { packExplanation, unpackExplanation } from "./explain.js";
 
 const sql = neon(process.env.DATABASE_URL || process.env.POSTGRES_URL);
 
@@ -51,11 +52,13 @@ function ensureSchema() {
 }
 
 function toPublic(row) {
+  const explained = unpackExplanation(row.explanation);
   return {
     question: row.question,
     options: JSON.parse(row.options),
     answer: Number(row.answer),
-    explanation: row.explanation,
+    explanation: explained.explanation,
+    optionExplanations: explained.optionExplanations,
     category: row.category,
     topic: row.topic,
     topicLabel: row.topic_label,
@@ -76,7 +79,7 @@ export async function saveQuestions(questions, meta) {
         ${item.question},
         ${JSON.stringify(item.options)},
         ${item.answer},
-        ${item.explanation},
+        ${packExplanation(item)},
         ${meta.category},
         ${meta.topic},
         ${meta.parentTopic || ""},
@@ -121,6 +124,19 @@ export async function practiceQuestions(category, topicIds, limit) {
     FROM questions
     WHERE category = ${category} AND topic = ANY(${topicIds})
     ORDER BY RANDOM()
+    LIMIT ${limit}
+  `;
+  return rows.map(toPublic);
+}
+
+export async function browseQuestions(category, topicIds, limit = 500) {
+  await ensureSchema();
+  if (!topicIds.length) return [];
+  const rows = await sql`
+    SELECT question, options, answer, explanation, category, topic, topic_label, difficulty, source
+    FROM questions
+    WHERE category = ${category} AND topic = ANY(${topicIds})
+    ORDER BY topic_label ASC, id ASC
     LIMIT ${limit}
   `;
   return rows.map(toPublic);

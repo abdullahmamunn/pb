@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
+import { packExplanation, unpackExplanation } from "./explain.js";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dir = path.join(root, "data");
@@ -61,7 +62,7 @@ export function saveQuestions(questions, meta) {
       item.question,
       JSON.stringify(item.options),
       item.answer,
-      item.explanation,
+      packExplanation(item),
       meta.category,
       meta.topic,
       meta.parentTopic || "",
@@ -93,6 +94,22 @@ export function countByTopic() {
   return counts;
 }
 
+function mapQuestionRow(row) {
+  const explained = unpackExplanation(row.explanation);
+  return {
+    question: row.question,
+    options: JSON.parse(row.options),
+    answer: row.answer,
+    explanation: explained.explanation,
+    optionExplanations: explained.optionExplanations,
+    category: row.category,
+    topic: row.topic,
+    topicLabel: row.topic_label,
+    difficulty: row.difficulty,
+    source: row.source ? `সংরক্ষিত · ${row.source}` : "সংরক্ষিত প্রশ্ন",
+  };
+}
+
 export function practiceQuestions(category, topicIds, limit) {
   if (!topicIds.length) return [];
   const marks = topicIds.map(() => "?").join(", ");
@@ -105,17 +122,22 @@ export function practiceQuestions(category, topicIds, limit) {
        LIMIT ?`,
     )
     .all(category, ...topicIds, limit);
-  return rows.map((row) => ({
-    question: row.question,
-    options: JSON.parse(row.options),
-    answer: row.answer,
-    explanation: row.explanation,
-    category: row.category,
-    topic: row.topic,
-    topicLabel: row.topic_label,
-    difficulty: row.difficulty,
-    source: row.source ? `সংরক্ষিত · ${row.source}` : "সংরক্ষিত প্রশ্ন",
-  }));
+  return rows.map(mapQuestionRow);
+}
+
+export function browseQuestions(category, topicIds, limit = 500) {
+  if (!topicIds.length) return [];
+  const marks = topicIds.map(() => "?").join(", ");
+  const rows = db
+    .prepare(
+      `SELECT question, options, answer, explanation, category, topic, topic_label, difficulty, source
+       FROM questions
+       WHERE category = ? AND topic IN (${marks})
+       ORDER BY topic_label ASC, id ASC
+       LIMIT ?`,
+    )
+    .all(category, ...topicIds, limit);
+  return rows.map(mapQuestionRow);
 }
 
 export function saveWrittenQuestions(questions, meta) {

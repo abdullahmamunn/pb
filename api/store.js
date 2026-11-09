@@ -13,6 +13,9 @@ const emptyStore = {
   practiceQuestions() {
     return [];
   },
+  browseQuestions() {
+    return [];
+  },
   saveWrittenQuestions() {
     return 0;
   },
@@ -38,6 +41,7 @@ export const saveQuestions = store.saveQuestions;
 export const countByCategory = store.countByCategory;
 export const countByTopic = store.countByTopic;
 export const practiceQuestions = store.practiceQuestions;
+export const browseQuestions = store.browseQuestions;
 export const saveWrittenQuestions = store.saveWrittenQuestions;
 export const countWrittenByTopic = store.countWrittenByTopic;
 export const practiceWrittenQuestions = store.practiceWrittenQuestions;

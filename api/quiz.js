@@ -1,9 +1,10 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { DEPT_CATEGORIES, topicScope, treeWithCounts } from "./topics.js";
+import { allTopicIds, DEPT_CATEGORIES, topicScope, treeWithCounts } from "./topics.js";
 import {
   countByCategory,
   countByTopic,
   countWrittenByTopic,
+  browseQuestions,
   practiceQuestions,
   practiceWrittenByCategories,
   practiceWrittenQuestions,
@@ -1050,27 +1051,27 @@ for (const question of pastPapers) {
 
 const CATEGORY_BRIEF = {
   networks:
-    "Computer networking written/MCQ topics: IP subnetting and VLSM, OSI and TCP/IP mapping, TCP handshake/UDP/windowing, HTTP/HTTPS/DNS/DHCP/FTP, and RIP vs OSPF vs BGP.",
+    "Computer networking written/MCQ topics: IP subnetting and VLSM, OSI and TCP/IP mapping, TCP handshake/UDP/windowing, HTTP/HTTPS/DNS/DHCP/FTP, RIP vs OSPF vs BGP, cryptography and firewall basics.",
   dbms:
-    "DBMS written/MCQ topics: SQL aggregates GROUP BY HAVING, joins and sub-queries, normalization 1NF-BCNF, ER modeling, ACID and basic concurrency.",
+    "DBMS written/MCQ topics: SQL aggregates GROUP BY HAVING, joins and sub-queries, normalization 1NF-BCNF, ER modeling, ACID/concurrency, and indexing.",
   dsa:
-    "Programming and data structures: code output tracing, arrays/matrices, basic C/C++/Java algorithms, stacks queues linked lists, BST and tree traversals.",
+    "Programming and data structures: code output tracing, arrays/matrices, basic C/C++/Java algorithms, stacks queues linked lists, BST, tree traversals, graphs, sorting and complexity.",
   digital:
     "Digital logic and discrete math: 3/4-variable K-maps, logic gate conversions and combinational circuits, pigeonhole principle and basic combinatorics.",
   swe:
-    "Software engineering and OOP: inheritance polymorphism encapsulation abstraction, UML use case and sequence diagrams, Agile and Waterfall SDLC.",
+    "Software engineering and OOP: inheritance polymorphism encapsulation abstraction, UML use case and sequence diagrams, Agile and Waterfall SDLC, and software testing.",
   os: "Operating systems only: scheduling, deadlock, memory management, paging, virtual memory.",
   energy: "Petrobangla and the Bangladesh oil and gas sector only: companies, gas fields, transmission, distribution, and IT systems such as SCADA used in that sector.",
   bangla:
-    "Bangla MCQ for Petrobangla: sandhi, samas, karok-bhibakti, natwa/satwa, spelling correction, and literature of Tagore, Nazrul and major writers. Write in Bengali.",
+    "Bangla MCQ for Petrobangla: sandhi, samas, karok-bhibakti, natwa/satwa, spelling, synonym/antonym, idioms (বাগ্ধারা), one-word, and literature of Tagore, Nazrul, Jasimuddin and major writers. Write in Bengali.",
   english:
-    "English MCQ: error detection/sentence correction, prepositions, idioms, subject-verb agreement, pronouns, parts of speech and analogies. Write in English.",
+    "English MCQ: synonyms/antonyms, error detection/sentence correction, prepositions, idioms, SVA, pronouns, parts of speech/analogies, tense, article, voice, narration, conditional. Write in English.",
   math:
-    "Aptitude math GMAT/IBA style: ratio, percentage, profit loss, mixtures, time-speed-distance, work-time, linear equations and basic number theory. Write in Bengali.",
+    "Aptitude math GMAT/IBA style: ratio, percentage, profit loss, mixtures, time-speed-distance, work-time, LCM/HCF, average, unitary method, linear equations, number theory, number series and reasoning. Write in Bengali.",
   gk:
-    "General knowledge MCQ: Petrobangla companies, gas fields, energy/LNG/power plants, Bangladesh history (Language Movement, 1971), mega-projects and current affairs. Write in Bengali.",
+    "General knowledge MCQ: Petrobangla companies, gas fields, pipeline/distribution, SCADA/IT, energy/LNG/power plants, Bangladesh history and constitution, mega-projects, international affairs, general science, and current affairs. Write in Bengali.",
   mixed:
-    "A Petrobangla Assistant Manager CSE/IT paper mix: non-dept MCQ (Bangla, English, math, GK/energy) plus departmental topics (programming/DSA, DBMS, networks, SWE/OOP, digital logic).",
+    "A Petrobangla Assistant Manager CSE/IT paper mix: non-dept MCQ (Bangla, English, math, GK) plus departmental topics (programming/DSA, DBMS, networks, SWE/OOP, digital logic, OS).",
 };
 
 const CURRENT_AFFAIRS_TOPIC_IDS = new Set([
@@ -1099,8 +1100,10 @@ function buildPrompt(category, org, count, topicPath, { useSearch = false, recen
   const medium = Math.max(0, Math.round(count * 0.3));
   const hard = Math.max(1, count - easy - medium);
   const language = category === "english"
-    ? "Write each question and its four options in English. Write explanations in Bengali."
-    : "Write each question, its options, and its explanation in natural Bangladeshi exam Bengali.";
+    ? "Write each question and its four options in English. Write explanation and optionExplanations in Bengali."
+    : category === "mixed"
+      ? "For English-category items only: question and options in English. For every other category: question and options in Bengali. Write all explanations and optionExplanations in Bengali."
+      : "Write each question, its four options, explanation, and optionExplanations in natural Bangladeshi exam Bengali.";
   const topicLine = topicPath ? `Topic: ${topicPath}. Every question must be specifically about this topic.` : "";
   const today = new Date().toISOString().slice(0, 10);
   const affairsMode = useSearch || recentAffairs;
@@ -1129,7 +1132,8 @@ Difficulty counts: ${easy} Easy, ${medium} Medium, ${hard} Hard. Use fewer easy 
 Rules:
 - Exactly 4 options. Do not prefix options with ক, খ, গ, or ঘ.
 - "answer" is the zero-based index (0, 1, 2, or 3). Only one option is correct.
-- Explanations are in Bengali, 2 to 4 sentences.
+- "explanation" is a short overall Bengali summary (1 to 2 sentences).
+- "optionExplanations" MUST be an array of exactly 4 Bengali strings, one for each option in order: why that option is correct or incorrect.
 - category must be exactly one of: bangla, english, math, gk, networks, dbms, dsa, swe, digital, os, energy.
 - If the subject is not mixed, every question must use that one category id.
 - difficulty must be exactly Easy, Medium, or Hard.
@@ -1155,7 +1159,7 @@ function shuffle(items) {
 }
 
 function toPublicQuestion(question) {
-  return {
+  const out = {
     question: question.question,
     options: question.options.slice(),
     answer: question.answer,
@@ -1164,6 +1168,10 @@ function toPublicQuestion(question) {
     difficulty: question.difficulty,
     source: question.source || "সরকারি CSE/IT নিয়োগ",
   };
+  if (Array.isArray(question.optionExplanations) && question.optionExplanations.length === 4) {
+    out.optionExplanations = question.optionExplanations.slice();
+  }
+  return out;
 }
 
 function readParam(req, name) {
@@ -1391,6 +1399,15 @@ function normalizeDifficulty(value) {
   return "Medium";
 }
 
+function normalizeOptionExplanations(item, options) {
+  const raw = item?.optionExplanations || item?.option_explanations || item?.explanations;
+  if (!Array.isArray(raw) || raw.length !== 4) return null;
+  const cleaned = raw.map((value) => String(value || "").trim());
+  if (cleaned.some((value) => !value)) return null;
+  if (cleaned.length !== options.length) return null;
+  return cleaned;
+}
+
 function normalizeQuestions(value) {
   const list = Array.isArray(value) ? value : value?.questions;
   if (!Array.isArray(list)) return [];
@@ -1403,11 +1420,13 @@ function normalizeQuestions(value) {
     const answer = Number(item.answer);
     if (!question || options.length !== 4 || options.some((option) => !option)) continue;
     if (!Number.isInteger(answer) || answer < 0 || answer > 3) continue;
+    const optionExplanations = normalizeOptionExplanations(item, options);
     cleaned.push({
       question,
       options,
       answer,
       explanation: String(item.explanation || "").trim() || "ব্যাখ্যা পাওয়া যায়নি।",
+      optionExplanations,
       category: normalizeCategoryId(item.category) || "swe",
       difficulty: normalizeDifficulty(item.difficulty),
     });
@@ -1438,10 +1457,22 @@ function responseSchema() {
         },
         answer: { type: Type.INTEGER },
         explanation: { type: Type.STRING },
+        optionExplanations: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+        },
         category: { type: Type.STRING },
         difficulty: { type: Type.STRING },
       },
-      required: ["question", "options", "answer", "explanation", "category", "difficulty"],
+      required: [
+        "question",
+        "options",
+        "answer",
+        "explanation",
+        "optionExplanations",
+        "category",
+        "difficulty",
+      ],
     },
   };
 }
@@ -1552,7 +1583,7 @@ async function askGeminiRaw(prompt, { withWrittenSchema = false } = {}) {
 
 async function askGemini(prompt, minimum, { withSchema = false, useSearch = false } = {}) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), useSearch ? 55000 : 25000);
+  const timer = setTimeout(() => controller.abort(), useSearch ? 55000 : withSchema ? 45000 : 35000);
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     const config = {
@@ -1913,6 +1944,69 @@ export default async function handler(req, res) {
     return;
   }
 
+  if (mode === "browse") {
+    if (!CATEGORY_IDS.includes(category) || category === "mixed") {
+      sendJson(res, 400, { error: "একটি বিষয় বেছে নিন।" });
+      return;
+    }
+    const count = readCount(req, 500, { min: 1, max: 500 });
+    const special = topicId === "all-questions" || topicId === "static-bank";
+    if (topicId && !special && !scope) {
+      sendJson(res, 400, { error: "এই বিষয়ে এই টপিক নেই।" });
+      return;
+    }
+    if (!topicId) {
+      sendJson(res, 400, { error: "সব প্রশ্ন দেখতে একটি বিষয় ও টপিক বেছে নিন।" });
+      return;
+    }
+
+    const staticBank = matchingQuestions(category, "all").map((question) => ({
+      ...toPublicQuestion(question),
+      topic: "static-bank",
+      topicLabel: "ব্যাংক প্রশ্ন",
+      source: question.source || "ব্যাংক প্রশ্ন",
+    }));
+
+    let questions = [];
+    let label = "";
+    if (topicId === "static-bank") {
+      label = `${category} · ব্যাংক প্রশ্ন`;
+      questions = staticBank.slice(0, count);
+    } else if (topicId === "all-questions") {
+      label = `${category} · সব প্রশ্ন`;
+      const saved = await browseQuestions(category, allTopicIds(category), count);
+      questions = uniqueByQuestion(
+        saved
+          .map((item) => ({
+            ...item,
+            topicLabel: item.topicLabel || "সংরক্ষিত",
+          }))
+          .concat(staticBank),
+      ).slice(0, count);
+    } else {
+      label = scope.path;
+      const saved = await browseQuestions(category, scope.ids, count);
+      questions = saved.map((item) => ({
+        ...item,
+        topicLabel: item.topicLabel || scope.path,
+      }));
+    }
+
+    sendJson(
+      res,
+      200,
+      {
+        category,
+        topic: topicId,
+        label,
+        total: questions.length,
+        questions,
+      },
+      { "X-Quiz-Source": topicId === "static-bank" ? "past_papers" : "browse-mixed" },
+    );
+    return;
+  }
+
   if (topicId && !scope) {
     sendJson(res, 400, { error: "এই বিষয়ে এই টপিক নেই।" });
     return;
@@ -2049,6 +2143,6 @@ export default async function handler(req, res) {
 
   sendJson(res, 400, {
     error:
-      "Use mode=past_papers, mode=dynamic_ai, mode=practice, mode=custom_mock, mode=topics, mode=viva, mode=written, mode=written_ai, mode=written_practice, or mode=catalog.",
+      "Use mode=past_papers, mode=dynamic_ai, mode=practice, mode=browse, mode=custom_mock, mode=topics, mode=viva, mode=written, mode=written_ai, mode=written_practice, or mode=catalog.",
   });
 }
