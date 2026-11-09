@@ -1436,12 +1436,57 @@ function normalizeQuestions(value) {
 
 function extractJson(text) {
   if (!text || typeof text !== "string") return null;
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const body = (fenced ? fenced[1] : text).trim();
-  const start = body.indexOf("[");
-  const end = body.lastIndexOf("]");
-  if (start === -1 || end <= start) return null;
-  return JSON.parse(body.slice(start, end + 1));
+  let body = text.trim();
+  // Only unwrap when the whole response is fenced. Do NOT match ``` inside code answers.
+  const wrapped = body.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  if (wrapped) body = wrapped[1].trim();
+
+  const asQuestions = (value) => {
+    if (Array.isArray(value)) return value;
+    if (value && typeof value === "object" && Array.isArray(value.questions)) return value.questions;
+    return null;
+  };
+
+  try {
+    const direct = asQuestions(JSON.parse(body));
+    if (direct) return direct;
+  } catch {
+    // fall through to bracket scan
+  }
+
+  // Scan for a balanced JSON array, ignoring brackets inside strings (code like a[i]).
+  for (let start = 0; start < body.length; start += 1) {
+    if (body[start] !== "[") continue;
+    let depth = 0;
+    let inString = false;
+    let escape = false;
+    for (let end = start; end < body.length; end += 1) {
+      const ch = body[end];
+      if (inString) {
+        if (escape) escape = false;
+        else if (ch === "\\") escape = true;
+        else if (ch === "\"") inString = false;
+        continue;
+      }
+      if (ch === "\"") {
+        inString = true;
+        continue;
+      }
+      if (ch === "[") depth += 1;
+      else if (ch === "]") {
+        depth -= 1;
+        if (depth === 0) {
+          try {
+            const parsed = asQuestions(JSON.parse(body.slice(start, end + 1)));
+            if (parsed) return parsed;
+          } catch {
+            break;
+          }
+        }
+      }
+    }
+  }
+  return null;
 }
 
 function responseSchema() {
@@ -1493,7 +1538,7 @@ function normalizeWrittenQuestions(value) {
     if (!item || typeof item !== "object") continue;
     const question = String(item.question || "").trim();
     const answer = String(item.answer || "").trim();
-    if (!question || !answer || question.length < 20 || answer.length < 20) continue;
+    if (!question || !answer || question.length < 12 || answer.length < 12) continue;
     const marks = Number(item.marks);
     cleaned.push({
       question,
@@ -1637,7 +1682,11 @@ async function generateWrittenQuestions(category, count, topicPath) {
     errors.push(new Error("GEMINI_API_KEY is not set"));
   }
 
-  throw new Error(errors.map((error) => error.message).join("; ") || "No AI provider is configured for written questions");
+  const err = new Error(
+    errors.map((error) => error.message).join("; ") || "No AI provider is configured for written questions",
+  );
+  err.quota = errors.some(isQuotaError);
+  throw err;
 }
 
 async function completeChat({ name, url, apiKey, model, prompt, minimum, headers = {}, extra = {} }) {
