@@ -1519,6 +1519,7 @@ Rules:
 - question and answer MUST be English
 - Do NOT make MCQs; no options arrays
 - Prefer concrete numbers, short code snippets, or mini schemas
+- For ANY code/SQL, put it in a Markdown fenced block with real newlines, e.g. \`\`\`c\\nint main() {\\n  ...\\n}\\n\`\`\` — never crush a whole program onto one line
 - style must be one of: code_trace, table_fill, draw_explain, sql_write, complexity, fsm_digital, testing_classify, theory_short
 - difficulty must be Easy, Medium, or Hard
 - category must be exactly: ${category}
