@@ -1,7 +1,18 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { topicScope, treeWithCounts } from "./topics.js";
-import { countByCategory, countByTopic, practiceQuestions, questionsPersist, saveQuestions } from "./store.js";
+import { DEPT_CATEGORIES, topicScope, treeWithCounts } from "./topics.js";
+import {
+  countByCategory,
+  countByTopic,
+  countWrittenByTopic,
+  practiceQuestions,
+  practiceWrittenByCategories,
+  practiceWrittenQuestions,
+  questionsPersist,
+  saveQuestions,
+  saveWrittenQuestions,
+} from "./store.js";
 import { vivaCatalog, vivaSession } from "./viva.js";
+import { writtenCatalog, writtenForCategories, writtenSession } from "./written.js";
 
 export const config = {
   maxDuration: 60,
@@ -1012,11 +1023,23 @@ const CATEGORY_MAP = {
   DSA: "dsa",
   OS: "os",
   "Software Engineering": "swe",
-  Programming: "swe",
-  "Digital Logic": "swe",
+  Programming: "dsa",
+  "Digital Logic": "digital",
 };
 
-const CATEGORY_IDS = ["bangla", "english", "math", "gk", "networks", "dbms", "dsa", "os", "swe", "energy"];
+const CATEGORY_IDS = [
+  "bangla",
+  "english",
+  "math",
+  "gk",
+  "networks",
+  "dbms",
+  "dsa",
+  "swe",
+  "digital",
+  "os",
+  "energy",
+];
 const ORG_IDS = ["petrobangla", "doict", "bcs", "bank"];
 
 for (const question of pastPapers) {
@@ -1026,17 +1049,28 @@ for (const question of pastPapers) {
 }
 
 const CATEGORY_BRIEF = {
-  networks: "Computer networks and security only: OSI, TCP/IP, routing, cryptography, firewalls, subnetting.",
-  dbms: "DBMS and SQL only: normalization, indexing, ACID, queries, joins, transactions.",
-  dsa: "Data structures and algorithms only: trees, graphs, sorting, complexity, dynamic programming, stack and queue.",
+  networks:
+    "Computer networking written/MCQ topics: IP subnetting and VLSM, OSI and TCP/IP mapping, TCP handshake/UDP/windowing, HTTP/HTTPS/DNS/DHCP/FTP, and RIP vs OSPF vs BGP.",
+  dbms:
+    "DBMS written/MCQ topics: SQL aggregates GROUP BY HAVING, joins and sub-queries, normalization 1NF-BCNF, ER modeling, ACID and basic concurrency.",
+  dsa:
+    "Programming and data structures: code output tracing, arrays/matrices, basic C/C++/Java algorithms, stacks queues linked lists, BST and tree traversals.",
+  digital:
+    "Digital logic and discrete math: 3/4-variable K-maps, logic gate conversions and combinational circuits, pigeonhole principle and basic combinatorics.",
+  swe:
+    "Software engineering and OOP: inheritance polymorphism encapsulation abstraction, UML use case and sequence diagrams, Agile and Waterfall SDLC.",
   os: "Operating systems only: scheduling, deadlock, memory management, paging, virtual memory.",
-  swe: "Software engineering and OOP only: polymorphism, inheritance, design patterns, SDLC, agile, testing.",
   energy: "Petrobangla and the Bangladesh oil and gas sector only: companies, gas fields, transmission, distribution, and IT systems such as SCADA used in that sector.",
-  bangla: "Bangla language and literature for a Bangladesh recruitment MCQ: synonyms, antonyms, idioms, one-word substitution, sandhi, samas, and major writers. Write the question and options in Bengali.",
-  english: "English grammar and vocabulary for a Bangladesh recruitment MCQ: synonyms, antonyms, articles, prepositions, tense, voice, narration, conditionals, and idioms. Write the question and options in English.",
-  math: "Arithmetic and mental ability for a Bangladesh recruitment MCQ: number system, LCM and HCF, unitary method, work and time, profit and loss, percentage, ratio, average, series, and simple reasoning. Write the question and options in Bengali.",
-  gk: "General knowledge for a Bangladesh recruitment MCQ: Bangladesh affairs, Liberation War, Language Movement, recent current affairs, international affairs, and everyday general science. Write the question and options in Bengali.",
-  mixed: "A full Petrobangla engineering paper mix: Bangla, English, mathematics and mental ability, general knowledge, networks, DBMS, DSA, operating systems, software engineering, and Petrobangla energy. Use at least six different category ids.",
+  bangla:
+    "Bangla MCQ for Petrobangla: sandhi, samas, karok-bhibakti, natwa/satwa, spelling correction, and literature of Tagore, Nazrul and major writers. Write in Bengali.",
+  english:
+    "English MCQ: error detection/sentence correction, prepositions, idioms, subject-verb agreement, pronouns, parts of speech and analogies. Write in English.",
+  math:
+    "Aptitude math GMAT/IBA style: ratio, percentage, profit loss, mixtures, time-speed-distance, work-time, linear equations and basic number theory. Write in Bengali.",
+  gk:
+    "General knowledge MCQ: Petrobangla companies, gas fields, energy/LNG/power plants, Bangladesh history (Language Movement, 1971), mega-projects and current affairs. Write in Bengali.",
+  mixed:
+    "A Petrobangla Assistant Manager CSE/IT paper mix: non-dept MCQ (Bangla, English, math, GK/energy) plus departmental topics (programming/DSA, DBMS, networks, SWE/OOP, digital logic).",
 };
 
 const CURRENT_AFFAIRS_TOPIC_IDS = new Set([
@@ -1096,7 +1130,7 @@ Rules:
 - Exactly 4 options. Do not prefix options with ক, খ, গ, or ঘ.
 - "answer" is the zero-based index (0, 1, 2, or 3). Only one option is correct.
 - Explanations are in Bengali, 2 to 4 sentences.
-- category must be exactly one of: bangla, english, math, gk, networks, dbms, dsa, os, swe, energy.
+- category must be exactly one of: bangla, english, math, gk, networks, dbms, dsa, swe, digital, os, energy.
 - If the subject is not mixed, every question must use that one category id.
 - difficulty must be exactly Easy, Medium, or Hard.
 - Return only the JSON array.`;
@@ -1197,8 +1231,9 @@ function categoryLabel(category) {
     networks: "নেটওয়ার্ক",
     dbms: "ডাটাবেজ",
     dsa: "ডাটা স্ট্রাকচার",
-    os: "অপারেটিং সিস্টেম",
     swe: "সফটওয়্যার",
+    digital: "ডিজিটাল লজিক",
+    os: "অপারেটিং সিস্টেম",
     energy: "জ্বালানি",
   };
   return labels[category] || category;
@@ -1280,6 +1315,9 @@ function normalizeCategoryId(value) {
   if (text.includes("db") || text.includes("sql")) return "dbms";
   if (text.includes("algorithm") || text.includes("data structure") || text === "dsa") return "dsa";
   if (text.includes("operating") || text === "os") return "os";
+  if (text.includes("digital") || text.includes("k-map") || text.includes("kmap") || text.includes("discrete")) {
+    return "digital";
+  }
   if (text.includes("energy") || text.includes("petro") || text.includes("gas")) return "energy";
   if (text.includes("software") || text.includes("oop") || text === "swe") return "swe";
   if (text.includes("bangla") || text.includes("বাংলা")) return "bangla";
@@ -1416,6 +1454,101 @@ function questionsFromText(text, minimum, name) {
   return questions;
 }
 
+function normalizeWrittenQuestions(value) {
+  const list = Array.isArray(value) ? value : value?.questions;
+  if (!Array.isArray(list)) return [];
+  const cleaned = [];
+  for (const item of list) {
+    if (!item || typeof item !== "object") continue;
+    const question = String(item.question || "").trim();
+    const answer = String(item.answer || "").trim();
+    if (!question || !answer || question.length < 20 || answer.length < 20) continue;
+    const marks = Number(item.marks);
+    cleaned.push({
+      question,
+      answer,
+      marks: Number.isInteger(marks) && marks >= 2 && marks <= 10 ? marks : 5,
+      style: String(item.style || "theory").trim().toLowerCase() || "theory",
+      difficulty: normalizeDifficulty(item.difficulty),
+      category: normalizeCategoryId(item.category) || "",
+    });
+  }
+  return cleaned;
+}
+
+function writtenFromText(text, minimum, name) {
+  const questions = normalizeWrittenQuestions(extractJson(text));
+  if (questions.length < minimum) {
+    throw new Error(`${name} returned ${questions.length} usable written questions`);
+  }
+  return questions;
+}
+
+function writtenResponseSchema() {
+  return {
+    type: Type.ARRAY,
+    items: {
+      type: Type.OBJECT,
+      properties: {
+        question: { type: Type.STRING },
+        answer: { type: Type.STRING },
+        marks: { type: Type.INTEGER },
+        style: { type: Type.STRING },
+        difficulty: { type: Type.STRING },
+        category: { type: Type.STRING },
+      },
+      required: ["question", "answer", "marks", "style", "difficulty", "category"],
+    },
+  };
+}
+
+function buildWrittenPrompt(category, count, topicPath) {
+  return `You set Petrobangla / BUET-style departmental WRITTEN short-answer questions for Assistant Manager (CSE/IT).
+
+Subject category id: ${category}
+Topic: ${topicPath || category}
+Create exactly ${count} original written items in ENGLISH.
+
+Format inspiration (Petrobangla CSE/IT 2024 departmental paper):
+- Numbered multi-part style inside one item when useful, e.g. "1(a) ...\\n1(b) ..."
+- Styles to mix: code_trace (C/Java output), table_fill (Y/N access matrix), draw_explain (tree/array), sql_write (schema + queries), complexity (quicksort/analysis), fsm_digital (flip-flops/K-map), testing_classify, theory_short
+- Each item is writable by hand in 4–8 minutes; marks usually 5 (sometimes 4–8)
+- Provide a clear model answer students can self-check
+
+Rules:
+- question and answer MUST be English
+- Do NOT make MCQs; no options arrays
+- Prefer concrete numbers, short code snippets, or mini schemas
+- style must be one of: code_trace, table_fill, draw_explain, sql_write, complexity, fsm_digital, testing_classify, theory_short
+- difficulty must be Easy, Medium, or Hard
+- category must be exactly: ${category}
+- Return only a JSON array.`;
+}
+
+async function askGeminiRaw(prompt, { withWrittenSchema = false } = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 45000);
+  try {
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const config = {
+      temperature: 0.55,
+      maxOutputTokens: 8192,
+      responseMimeType: "application/json",
+      thinkingConfig: { thinkingBudget: 0 },
+      abortSignal: controller.signal,
+    };
+    if (withWrittenSchema) config.responseSchema = writtenResponseSchema();
+    const response = await ai.models.generateContent({
+      model: process.env.GEMINI_MODEL || "gemini-3.1-flash-lite",
+      contents: prompt,
+      config,
+    });
+    return response.text;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function askGemini(prompt, minimum, { withSchema = false, useSearch = false } = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), useSearch ? 55000 : 25000);
@@ -1447,6 +1580,32 @@ async function askGemini(prompt, minimum, { withSchema = false, useSearch = fals
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function generateWrittenQuestions(category, count, topicPath) {
+  const prompt = buildWrittenPrompt(category, count, topicPath);
+  const minimum = count < 4 ? count : Math.max(3, count - 1);
+  const errors = [];
+
+  if (process.env.GEMINI_API_KEY) {
+    try {
+      const text = await askGeminiRaw(prompt, { withWrittenSchema: true });
+      return { questions: writtenFromText(text, minimum, "Gemini"), source: "gemini" };
+    } catch (schemaError) {
+      console.error("Structured written Gemini failed, retrying plain JSON:", schemaError);
+      try {
+        const text = await askGeminiRaw(prompt, { withWrittenSchema: false });
+        return { questions: writtenFromText(text, minimum, "Gemini"), source: "gemini" };
+      } catch (error) {
+        errors.push(error);
+        console.error("Written Gemini failed:", error);
+      }
+    }
+  } else {
+    errors.push(new Error("GEMINI_API_KEY is not set"));
+  }
+
+  throw new Error(errors.map((error) => error.message).join("; ") || "No AI provider is configured for written questions");
 }
 
 async function completeChat({ name, url, apiKey, model, prompt, minimum, headers = {}, extra = {} }) {
@@ -1654,6 +1813,105 @@ export default async function handler(req, res) {
     return;
   }
 
+  if (mode === "written") {
+    if (!topicId) {
+      const savedCounts = await countWrittenByTopic();
+      const catalog = writtenCatalog();
+      catalog.saved = savedCounts;
+      catalog.topics = treeWithCounts(savedCounts);
+      catalog.deptCategories = DEPT_CATEGORIES;
+      sendJson(res, 200, catalog, { "X-Quiz-Source": "written" });
+      return;
+    }
+    // Legacy seed bank sessions (dsa/dbms/.../mock)
+    const count = readCount(req, 8, { min: 4, max: 10 });
+    const session = writtenSession(topicId, count);
+    if (!session) {
+      sendJson(res, 400, { error: "এই লিখিত বিষয় নেই।" });
+      return;
+    }
+    sendJson(res, 200, session, { "X-Quiz-Source": "written" });
+    return;
+  }
+
+  if (mode === "written_practice" || mode === "written_ai") {
+    if (!DEPT_CATEGORIES.includes(category)) {
+      sendJson(res, 400, { error: "লিখিত অনুশীলন শুধু ডিপার্টমেন্টাল বিষয়ে।" });
+      return;
+    }
+    if (!scope) {
+      sendJson(res, 400, { error: "একটি ডিপার্টমেন্টাল টপিক বেছে নিন।" });
+      return;
+    }
+    const count = readCount(req, 6, { min: 4, max: 8 });
+
+    if (mode === "written_practice") {
+      const questions = await practiceWrittenQuestions(category, scope.ids, count);
+      if (!questions.length) {
+        sendJson(res, 404, {
+          error: "এই টপিকে সংরক্ষিত লিখিত প্রশ্ন নেই। আগে এআই দিয়ে তৈরি করুন।",
+        });
+        return;
+      }
+      sendJson(
+        res,
+        200,
+        {
+          id: scope.node.id,
+          label: scope.path,
+          blurb: "Saved written questions from your database.",
+          questions: questions.map((item) => ({
+            ...item,
+            topicLabel: item.topicLabel || scope.path,
+          })),
+        },
+        { "X-Quiz-Source": "written-saved" },
+      );
+      return;
+    }
+
+    try {
+      const generated = await generateWrittenQuestions(category, count, scope.path);
+      const questions = generated.questions.slice(0, count).map((item) => ({
+        ...item,
+        category,
+        topic: scope.node.id,
+        topicLabel: scope.path,
+      }));
+      const stored = await saveWrittenQuestions(questions, {
+        category,
+        topic: scope.node.id,
+        parentTopic: scope.node.parentId,
+        topicLabel: scope.path,
+        source: generated.source,
+      });
+      sendJson(
+        res,
+        200,
+        {
+          id: scope.node.id,
+          label: scope.path,
+          blurb: "AI-generated BUET/Petrobangla-style written questions.",
+          questions,
+        },
+        {
+          "X-Quiz-Source": generated.source,
+          "X-Quiz-Stored": String(stored),
+          "X-Quiz-Persist": questionsPersist ? "1" : "0",
+        },
+      );
+    } catch (error) {
+      console.error("Written AI failed:", error);
+      const quota = error?.quota || isQuotaError(error);
+      sendJson(res, 502, {
+        error: quota
+          ? "Gemini API কোটা/রেট লিমিট শেষ। কিছুক্ষণ পর আবার চেষ্টা করুন।"
+          : "লিখিত এআই প্রশ্ন তৈরি হয়নি। একটু পরে আবার চেষ্টা করুন।",
+      });
+    }
+    return;
+  }
+
   if (topicId && !scope) {
     sendJson(res, 400, { error: "এই বিষয়ে এই টপিক নেই।" });
     return;
@@ -1681,6 +1939,9 @@ export default async function handler(req, res) {
       return;
     }
     const count = readCount(req, 100, { min: 10, max: 100 });
+    const includeWritten = String(readParam(req, "written") || "1") !== "0";
+    const writtenRaw = Number(readParam(req, "wcount"));
+    const writtenCount = Number.isInteger(writtenRaw) ? Math.min(10, Math.max(4, writtenRaw)) : 8;
     const built = await buildCustomMock(selections, count, org);
     if (!built.questions.length) {
       sendJson(res, 404, {
@@ -1688,11 +1949,43 @@ export default async function handler(req, res) {
       });
       return;
     }
-    sendJson(res, 200, built.questions, {
-      "X-Quiz-Source": "custom_mock",
-      "X-Quiz-Saved": String(built.fromSaved),
-      "X-Quiz-Bank": String(built.fromBank),
-    });
+    const deptSelected = [
+      ...new Set(selections.map((item) => item.category).filter((id) => DEPT_CATEGORIES.includes(id))),
+    ];
+    let written = [];
+    if (includeWritten) {
+      const cats = deptSelected.length ? deptSelected : DEPT_CATEGORIES;
+      written = await practiceWrittenByCategories(cats, writtenCount);
+      if (written.length < Math.min(4, writtenCount)) {
+        const seed = writtenForCategories(cats, writtenCount);
+        const seen = new Set(written.map((item) => item.question));
+        for (const item of seed) {
+          if (seen.has(item.question)) continue;
+          written.push(item);
+          if (written.length >= writtenCount) break;
+        }
+      }
+      written = written.slice(0, writtenCount);
+    }
+    sendJson(
+      res,
+      200,
+      {
+        mcq: built.questions,
+        written,
+        meta: {
+          fromSaved: built.fromSaved,
+          fromBank: built.fromBank,
+          writtenCount: written.length,
+        },
+      },
+      {
+        "X-Quiz-Source": "custom_mock",
+        "X-Quiz-Saved": String(built.fromSaved),
+        "X-Quiz-Bank": String(built.fromBank),
+        "X-Quiz-Written": String(written.length),
+      },
+    );
     return;
   }
 
@@ -1754,6 +2047,7 @@ export default async function handler(req, res) {
   }
 
   sendJson(res, 400, {
-    error: "Use mode=past_papers, mode=dynamic_ai, mode=practice, mode=custom_mock, mode=topics, mode=viva, or mode=catalog.",
+    error:
+      "Use mode=past_papers, mode=dynamic_ai, mode=practice, mode=custom_mock, mode=topics, mode=viva, mode=written, mode=written_ai, mode=written_practice, or mode=catalog.",
   });
 }
