@@ -1082,9 +1082,16 @@ const CURRENT_AFFAIRS_TOPIC_IDS = new Set([
   "ca-energy",
 ]);
 
+const VOCAB_OPTION_TOPIC_IDS = new Set(["vocabulary", "en-synonym", "en-antonym"]);
+
 function isCurrentAffairsScope(scope) {
   if (!scope?.ids?.length) return false;
   return scope.ids.some((id) => CURRENT_AFFAIRS_TOPIC_IDS.has(id));
+}
+
+function wantsOptionExplanations(scope) {
+  if (!scope?.ids?.length) return false;
+  return scope.ids.some((id) => VOCAB_OPTION_TOPIC_IDS.has(id));
 }
 
 const ORG_BRIEF = {
@@ -1095,15 +1102,22 @@ const ORG_BRIEF = {
   bank: "state-owned bank IT officer, data-entry, and computer-operator exams.",
 };
 
-function buildPrompt(category, org, count, topicPath, { useSearch = false, recentAffairs = false } = {}) {
+function buildPrompt(category, org, count, topicPath, {
+  useSearch = false,
+  recentAffairs = false,
+  withOptionExplanations = false,
+} = {}) {
   const easy = Math.max(0, Math.round(count * 0.2));
   const medium = Math.max(0, Math.round(count * 0.3));
   const hard = Math.max(1, count - easy - medium);
   const language = category === "english"
-    ? "Write each question and its four options in English. Write explanation and optionExplanations in Bengali."
+    ? "Write each question and its four options in English. Write the explanation in Bengali."
     : category === "mixed"
-      ? "For English-category items only: question and options in English. For every other category: question and options in Bengali. Write all explanations and optionExplanations in Bengali."
-      : "Write each question, its four options, explanation, and optionExplanations in natural Bangladeshi exam Bengali.";
+      ? "For English-category items only: question and options in English. For every other category: question and options in Bengali. Write all explanations in Bengali."
+      : "Write each question, its four options, and explanation in natural Bangladeshi exam Bengali.";
+  const optionExplainRule = withOptionExplanations
+    ? `- "optionExplanations" MUST be an array of exactly 4 Bengali strings, one for each option in order: why that option is correct or incorrect (English Vocabulary only).`
+    : `- Do NOT include "optionExplanations". Only provide one short "explanation" summary.`;
   const topicLine = topicPath ? `Topic: ${topicPath}. Every question must be specifically about this topic.` : "";
   const today = new Date().toISOString().slice(0, 10);
   const affairsMode = useSearch || recentAffairs;
@@ -1133,7 +1147,7 @@ Rules:
 - Exactly 4 options. Do not prefix options with ক, খ, গ, or ঘ.
 - "answer" is the zero-based index (0, 1, 2, or 3). Only one option is correct.
 - "explanation" is a short overall Bengali summary (1 to 2 sentences).
-- "optionExplanations" MUST be an array of exactly 4 Bengali strings, one for each option in order: why that option is correct or incorrect.
+${optionExplainRule}
 - category must be exactly one of: bangla, english, math, gk, networks, dbms, dsa, swe, digital, os, energy.
 - If the subject is not mixed, every question must use that one category id.
 - difficulty must be exactly Easy, Medium, or Hard.
@@ -1489,35 +1503,32 @@ function extractJson(text) {
   return null;
 }
 
-function responseSchema() {
+function responseSchema({ withOptionExplanations = false } = {}) {
+  const properties = {
+    question: { type: Type.STRING },
+    options: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+    },
+    answer: { type: Type.INTEGER },
+    explanation: { type: Type.STRING },
+    category: { type: Type.STRING },
+    difficulty: { type: Type.STRING },
+  };
+  const required = ["question", "options", "answer", "explanation", "category", "difficulty"];
+  if (withOptionExplanations) {
+    properties.optionExplanations = {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+    };
+    required.splice(4, 0, "optionExplanations");
+  }
   return {
     type: Type.ARRAY,
     items: {
       type: Type.OBJECT,
-      properties: {
-        question: { type: Type.STRING },
-        options: {
-          type: Type.ARRAY,
-          items: { type: Type.STRING },
-        },
-        answer: { type: Type.INTEGER },
-        explanation: { type: Type.STRING },
-        optionExplanations: {
-          type: Type.ARRAY,
-          items: { type: Type.STRING },
-        },
-        category: { type: Type.STRING },
-        difficulty: { type: Type.STRING },
-      },
-      required: [
-        "question",
-        "options",
-        "answer",
-        "explanation",
-        "optionExplanations",
-        "category",
-        "difficulty",
-      ],
+      properties,
+      required,
     },
   };
 }
@@ -1626,7 +1637,11 @@ async function askGeminiRaw(prompt, { withWrittenSchema = false } = {}) {
   }
 }
 
-async function askGemini(prompt, minimum, { withSchema = false, useSearch = false } = {}) {
+async function askGemini(prompt, minimum, {
+  withSchema = false,
+  useSearch = false,
+  withOptionExplanations = false,
+} = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), useSearch ? 55000 : withSchema ? 45000 : 35000);
   try {
@@ -1642,7 +1657,7 @@ async function askGemini(prompt, minimum, { withSchema = false, useSearch = fals
       config.tools = [{ googleSearch: {} }];
     } else {
       config.responseMimeType = "application/json";
-      if (withSchema) config.responseSchema = responseSchema();
+      if (withSchema) config.responseSchema = responseSchema({ withOptionExplanations });
     }
     const response = await ai.models.generateContent({
       model:
@@ -1653,7 +1668,11 @@ async function askGemini(prompt, minimum, { withSchema = false, useSearch = fals
       config,
     });
     const label = useSearch ? "Gemini Search" : "Gemini";
-    return questionsFromText(response.text, minimum, label);
+    const questions = questionsFromText(response.text, minimum, label);
+    if (!withOptionExplanations) {
+      for (const item of questions) item.optionExplanations = null;
+    }
+    return questions;
   } finally {
     clearTimeout(timer);
   }
@@ -1798,20 +1817,32 @@ function fallbackProviders(minimum) {
   return providers;
 }
 
-async function generateDynamicQuestions(category, org, count, topicPath, { useSearch = false } = {}) {
+async function generateDynamicQuestions(category, org, count, topicPath, {
+  useSearch = false,
+  withOptionExplanations = false,
+} = {}) {
   const minimum = count < 5 ? count : Math.max(5, count - 2);
   const errors = [];
-  const plainPrompt = buildPrompt(category, org, count, topicPath, {
+  const promptOpts = {
     useSearch: false,
     recentAffairs: useSearch,
-  });
+    withOptionExplanations,
+  };
+  const plainPrompt = buildPrompt(category, org, count, topicPath, promptOpts);
 
   if (process.env.GEMINI_API_KEY) {
     if (useSearch) {
       try {
-        const searchPrompt = buildPrompt(category, org, count, topicPath, { useSearch: true });
+        const searchPrompt = buildPrompt(category, org, count, topicPath, {
+          useSearch: true,
+          withOptionExplanations,
+        });
         return {
-          questions: await askGemini(searchPrompt, minimum, { withSchema: false, useSearch: true }),
+          questions: await askGemini(searchPrompt, minimum, {
+            withSchema: false,
+            useSearch: true,
+            withOptionExplanations,
+          }),
           source: "gemini-search",
         };
       } catch (error) {
@@ -1822,11 +1853,17 @@ async function generateDynamicQuestions(category, org, count, topicPath, { useSe
     }
 
     try {
-      return { questions: await askGemini(plainPrompt, minimum, { withSchema: true }), source: "gemini" };
+      return {
+        questions: await askGemini(plainPrompt, minimum, { withSchema: true, withOptionExplanations }),
+        source: "gemini",
+      };
     } catch (schemaError) {
       console.error("Structured Gemini request failed, retrying without schema:", schemaError);
       try {
-        return { questions: await askGemini(plainPrompt, minimum, { withSchema: false }), source: "gemini" };
+        return {
+          questions: await askGemini(plainPrompt, minimum, { withSchema: false, withOptionExplanations }),
+          source: "gemini",
+        };
       } catch (error) {
         errors.push(error);
         console.error("Gemini failed:", error);
@@ -1839,6 +1876,9 @@ async function generateDynamicQuestions(category, org, count, topicPath, { useSe
   for (const provider of fallbackProviders(minimum)) {
     try {
       const questions = await completeChat({ ...provider, prompt: plainPrompt });
+      if (!withOptionExplanations) {
+        for (const item of questions) item.optionExplanations = null;
+      }
       return { questions, source: provider.name };
     } catch (error) {
       errors.push(error);
@@ -2150,7 +2190,11 @@ export default async function handler(req, res) {
     const count = readCount(req, sessionSize(category, mode));
     try {
       const useSearch = isCurrentAffairsScope(scope);
-      const generated = await generateDynamicQuestions(category, org, count, scope?.path || "", { useSearch });
+      const withOptionExplanations = wantsOptionExplanations(scope);
+      const generated = await generateDynamicQuestions(category, org, count, scope?.path || "", {
+        useSearch,
+        withOptionExplanations,
+      });
       const questions = generated.questions.map((item) => ({ ...item, category: scope ? category : item.category }));
       const focused = category === "mixed" ? questions : questions.filter((item) => item.category === category);
       const usable = focused.length >= Math.min(5, count) ? focused : questions;
