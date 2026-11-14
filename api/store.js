@@ -16,6 +16,12 @@ const emptyStore = {
   browseQuestions() {
     return [];
   },
+  listCustomTopics() {
+    return [];
+  },
+  getCustomTopicLabel() {
+    return "";
+  },
   saveWrittenQuestions() {
     return 0;
   },
@@ -42,6 +48,8 @@ export const countByCategory = store.countByCategory;
 export const countByTopic = store.countByTopic;
 export const practiceQuestions = store.practiceQuestions;
 export const browseQuestions = store.browseQuestions;
+export const listCustomTopics = store.listCustomTopics;
+export const getCustomTopicLabel = store.getCustomTopicLabel;
 export const saveWrittenQuestions = store.saveWrittenQuestions;
 export const countWrittenByTopic = store.countWrittenByTopic;
 export const practiceWrittenQuestions = store.practiceWrittenQuestions;

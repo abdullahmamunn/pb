@@ -94,6 +94,38 @@ export function countByTopic() {
   return counts;
 }
 
+export function listCustomTopics() {
+  const rows = db
+    .prepare(
+      `SELECT category, topic,
+              COALESCE(NULLIF(MAX(topic_label), ''), topic) AS label,
+              COUNT(*) AS total
+       FROM questions
+       WHERE topic LIKE 'custom-%'
+       GROUP BY category, topic
+       ORDER BY category ASC, label ASC`,
+    )
+    .all();
+  return rows.map((row) => ({
+    category: row.category,
+    topic: row.topic,
+    label: String(row.label || row.topic).replace(/^কাস্টম টপিক\s*→\s*/u, "").trim() || row.topic,
+    count: row.total,
+  }));
+}
+
+export function getCustomTopicLabel(category, topicId) {
+  const row = db
+    .prepare(
+      `SELECT topic_label FROM questions
+       WHERE category = ? AND topic = ?
+       ORDER BY id DESC LIMIT 1`,
+    )
+    .get(category, topicId);
+  if (!row?.topic_label) return "";
+  return String(row.topic_label).replace(/^কাস্টম টপিক\s*→\s*/u, "").trim();
+}
+
 function mapQuestionRow(row) {
   const explained = unpackExplanation(row.explanation);
   return {

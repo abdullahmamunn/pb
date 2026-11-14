@@ -518,7 +518,14 @@
         <p class="text-xs font-semibold text-[#0f8a4b]">টপিক বেছে নিন</p>
         <h3 id="topics-title" class="mt-1 text-xl font-bold text-slate-950"></h3>
         <p id="topics-count" class="mt-1 text-sm font-semibold text-slate-600"></p>
-        <p class="mt-2 text-sm leading-6 text-slate-500">বিষয়ের ভিতরের টপিক বা উপটপিক বেছে নিন। প্রশ্ন সংখ্যা সর্বোচ্চ ১৫। এআই প্রশ্ন ডাটাবেজে জমা থাকবে, পরে একই টপিকে অনুশীলন করা যাবে।</p>
+        <p class="mt-2 text-sm leading-6 text-slate-500">তালিকা থেকে টপিক বেছে নিন, অথবা নিজে কাস্টম টপিক লিখুন (যেমন: মাইকেল মধুসূদন দত্ত)। এআই প্রশ্ন ডাটাবেজে জমা থাকবে।</p>
+        <div class="mt-3 rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/40 p-3">
+          <label for="custom-topic-input" class="block text-xs font-semibold text-emerald-900">কাস্টম টপিক</label>
+          <div class="mt-2 flex flex-col gap-2 sm:flex-row">
+            <input id="custom-topic-input" type="text" maxlength="120" placeholder="যেমন: মাইকেল মধুসূদন দত্ত" class="min-h-11 w-full flex-1 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+            <button type="button" id="custom-topic-use" class="min-h-11 shrink-0 rounded-2xl bg-[#0f8a4b] px-4 text-sm font-bold text-white hover:bg-emerald-700">ব্যবহার করুন</button>
+          </div>
+        </div>
         <div id="topic-list" class="mt-4 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1"></div>
         <div id="topic-actions" class="mt-4 hidden border-t border-slate-100 pt-4">
           <p id="topic-picked" class="text-sm font-semibold text-slate-900"></p>
@@ -681,6 +688,7 @@
         index: 0,
         answers: [],
         filter: "all",
+        customLabel: "",
       };
       const viva = { id: "", label: "", items: [], index: 0, marks: [], revealed: false };
       const written = {
@@ -1615,11 +1623,27 @@
         addNodes(topicNodes(), 0);
       }
 
+      function customTopicId(category, label) {
+        const source = `${category}:${String(label || "").normalize("NFC").trim().toLowerCase()}`;
+        let hash = 2166136261;
+        for (let i = 0; i < source.length; i += 1) {
+          hash ^= source.charCodeAt(i);
+          hash = Math.imul(hash, 16777619);
+        }
+        return `custom-${(hash >>> 0).toString(36)}`;
+      }
+
       function selectTopic(id) {
         const node = findTopicNode(id);
         if (!node) return;
+        if (id === "custom") {
+          document.getElementById("topic-error").textContent = "একটি নির্দিষ্ট কাস্টম টপিক বেছে নিন, অথবা নিজে লিখুন।";
+          document.getElementById("topic-error").classList.remove("hidden");
+          return;
+        }
         state.topic = node.id;
         state.topicLabel = node.path;
+        state.customLabel = String(node.id).startsWith("custom-") ? node.label : "";
         document.getElementById("topic-actions").classList.remove("hidden");
         document.getElementById("topic-picked").textContent = node.path;
         document.getElementById("topic-saved").textContent = `এই টপিকে সংরক্ষিত প্রশ্ন ${bn(node.saved || 0)}টি।`;
@@ -1627,10 +1651,35 @@
         renderTopicList();
       }
 
+      function useCustomTopic() {
+        const input = document.getElementById("custom-topic-input");
+        const label = String(input.value || "").trim();
+        const error = document.getElementById("topic-error");
+        if (label.length < 2) {
+          error.textContent = "কাস্টম টপিক অন্তত ২ অক্ষরের হতে হবে।";
+          error.classList.remove("hidden");
+          return;
+        }
+        const id = customTopicId(state.category, label);
+        const existing = findTopicNode(id);
+        state.topic = id;
+        state.customLabel = label;
+        state.topicLabel = `কাস্টম টপিক → ${label}`;
+        document.getElementById("topic-actions").classList.remove("hidden");
+        document.getElementById("topic-picked").textContent = state.topicLabel;
+        document.getElementById("topic-saved").textContent = existing
+          ? `এই টপিকে সংরক্ষিত প্রশ্ন ${bn(existing.saved || 0)}টি।`
+          : "নতুন কাস্টম টপিক · আগে এআই দিয়ে তৈরি করুন।";
+        error.classList.add("hidden");
+        renderTopicList();
+      }
+
       async function openTopics(category) {
         state.category = category;
         state.topic = "";
         state.topicLabel = "";
+        state.customLabel = "";
+        document.getElementById("custom-topic-input").value = "";
         document.getElementById("topics-title").textContent = CATEGORIES[category] || category;
         document.getElementById("topics-count").textContent = "";
         document.getElementById("topic-actions").classList.add("hidden");
@@ -1876,6 +1925,7 @@
           } else if (state.topic && mode !== "past_papers") {
             params.set("topic", state.topic);
             params.set("count", String(state.count));
+            if (state.customLabel) params.set("label", state.customLabel);
           }
           const response = await fetch(`/api/quiz?${params}`);
           const data = await response.json();
@@ -2241,7 +2291,15 @@
         closeTopics();
         state.topic = "";
         state.topicLabel = "";
+        state.customLabel = "";
         openChooser(state.category);
+      });
+      document.getElementById("custom-topic-use").addEventListener("click", useCustomTopic);
+      document.getElementById("custom-topic-input").addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          useCustomTopic();
+        }
       });
       document.getElementById("topic-count").addEventListener("change", (event) => {
         state.count = clampCount(event.target.value);

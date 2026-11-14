@@ -116,6 +116,39 @@ export async function countByTopic() {
   return counts;
 }
 
+export async function listCustomTopics() {
+  await ensureSchema();
+  const rows = await sql`
+    SELECT category, topic,
+           COALESCE(NULLIF(MAX(topic_label), ''), topic) AS label,
+           COUNT(*)::int AS total
+    FROM questions
+    WHERE topic LIKE 'custom-%'
+    GROUP BY category, topic
+    ORDER BY category ASC, label ASC
+  `;
+  return rows.map((row) => ({
+    category: row.category,
+    topic: row.topic,
+    label: String(row.label || row.topic).replace(/^কাস্টম টপিক\s*→\s*/u, "").trim() || row.topic,
+    count: Number(row.total),
+  }));
+}
+
+export async function getCustomTopicLabel(category, topicId) {
+  await ensureSchema();
+  const rows = await sql`
+    SELECT topic_label
+    FROM questions
+    WHERE category = ${category} AND topic = ${topicId}
+    ORDER BY id DESC
+    LIMIT 1
+  `;
+  const label = rows[0]?.topic_label;
+  if (!label) return "";
+  return String(label).replace(/^কাস্টম টপিক\s*→\s*/u, "").trim();
+}
+
 export async function practiceQuestions(category, topicIds, limit) {
   await ensureSchema();
   if (!topicIds.length) return [];

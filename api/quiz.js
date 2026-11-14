@@ -1,10 +1,18 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { allTopicIds, DEPT_CATEGORIES, topicScope, treeWithCounts } from "./topics.js";
+import {
+  allTopicIds,
+  customTopicScope,
+  DEPT_CATEGORIES,
+  topicScope,
+  treeWithCounts,
+} from "./topics.js";
 import {
   countByCategory,
   countByTopic,
   countWrittenByTopic,
   browseQuestions,
+  getCustomTopicLabel,
+  listCustomTopics,
   practiceQuestions,
   practiceWrittenByCategories,
   practiceWrittenQuestions,
@@ -1213,7 +1221,21 @@ function readCount(req, fallback, { min = 1, max = 15 } = {}) {
 
 function readTopic(req) {
   const text = String(readParam(req, "topic") || "").trim().toLowerCase();
-  return /^[a-z0-9-]{1,40}$/.test(text) ? text : "";
+  return /^[a-z0-9-]{1,48}$/.test(text) ? text : "";
+}
+
+function readTopicLabel(req) {
+  return String(readParam(req, "label") || "").trim().slice(0, 120);
+}
+
+async function resolveScope(category, topicId, label = "") {
+  if (!topicId || category === "mixed") return null;
+  const builtIn = topicScope(category, topicId);
+  if (builtIn) return builtIn;
+  if (!topicId.startsWith("custom-") || topicId === "custom") return null;
+  let cleanLabel = String(label || "").trim();
+  if (!cleanLabel) cleanLabel = await getCustomTopicLabel(category, topicId);
+  return customTopicScope(category, topicId, cleanLabel);
 }
 
 function readMockSelections(req) {
@@ -1908,7 +1930,8 @@ export default async function handler(req, res) {
   const category = normalizeCategoryId(readParam(req, "category")) || "mixed";
   const org = normalizeOrgId(readParam(req, "org"));
   const topicId = readTopic(req);
-  const scope = topicId && category !== "mixed" ? topicScope(category, topicId) : null;
+  const topicLabelParam = readTopicLabel(req);
+  const scope = await resolveScope(category, topicId, topicLabelParam);
 
   if (mode === "catalog") {
     sendJson(res, 200, await catalog(), { "X-Quiz-Source": "past_papers" });
@@ -1916,7 +1939,8 @@ export default async function handler(req, res) {
   }
 
   if (mode === "topics") {
-    sendJson(res, 200, { topics: treeWithCounts(await countByTopic()) });
+    const [counts, customTopics] = await Promise.all([countByTopic(), listCustomTopics()]);
+    sendJson(res, 200, { topics: treeWithCounts(counts, customTopics) });
     return;
   }
 

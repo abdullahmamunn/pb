@@ -220,7 +220,24 @@ export function topicScope(category, topicId) {
   return { node, ids, path };
 }
 
-export function treeWithCounts(counts) {
+export function customTopicScope(category, topicId, label) {
+  const cleanLabel = String(label || "").trim().slice(0, 120);
+  if (!String(topicId || "").startsWith("custom-") || topicId === "custom" || !cleanLabel) return null;
+  return {
+    node: {
+      id: topicId,
+      label: cleanLabel,
+      parentId: "custom",
+      parentLabel: "কাস্টম টপিক",
+      children: [],
+    },
+    ids: [topicId],
+    path: `কাস্টম টপিক → ${cleanLabel}`,
+    custom: true,
+  };
+}
+
+export function treeWithCounts(counts, customTopics = []) {
   function decorate(category, nodes) {
     return (nodes || []).map((node) => {
       const children = decorate(category, node.children);
@@ -229,9 +246,27 @@ export function treeWithCounts(counts) {
       return { id: node.id, label: node.label, saved, children };
     });
   }
-  return Object.fromEntries(
+  const tree = Object.fromEntries(
     Object.entries(TOPIC_TREE).map(([category, nodes]) => [category, decorate(category, nodes)]),
   );
+  for (const item of customTopics || []) {
+    const category = item.category;
+    if (!tree[category]) continue;
+    let root = tree[category].find((node) => node.id === "custom");
+    if (!root) {
+      root = { id: "custom", label: "কাস্টম টপিক", saved: 0, children: [] };
+      tree[category].push(root);
+    }
+    const saved = Number(item.count || item.saved || 0);
+    root.children.push({
+      id: item.topic,
+      label: item.label || item.topic,
+      saved,
+      children: [],
+    });
+    root.saved += saved;
+  }
+  return tree;
 }
 
 export function allTopicIds(category) {
