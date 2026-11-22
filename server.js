@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import handler from "./api/quiz.js";
+import adminHandler from "./api/admin.js";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(root, "public");
@@ -39,7 +40,8 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname.startsWith("/api/")) {
     req.query = Object.fromEntries(url.searchParams.entries());
     try {
-      await handler(req, res);
+      if (url.pathname === "/api/admin") await adminHandler(req, res);
+      else await handler(req, res);
     } catch (error) {
       console.error(error);
       if (!res.writableEnded) {

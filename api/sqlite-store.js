@@ -228,6 +228,157 @@ export function practiceWrittenQuestions(category, topicIds, limit) {
   }));
 }
 
+function toAdminMcq(row) {
+  const explained = unpackExplanation(row.explanation);
+  return {
+    id: Number(row.id),
+    kind: "mcq",
+    question: row.question,
+    options: JSON.parse(row.options),
+    answer: Number(row.answer),
+    explanation: explained.explanation,
+    optionExplanations: explained.optionExplanations,
+    category: row.category,
+    topic: row.topic,
+    parentTopic: row.parent_topic || "",
+    topicLabel: row.topic_label || "",
+    difficulty: row.difficulty,
+    source: row.source || "",
+    createdAt: row.created_at,
+  };
+}
+
+function toAdminWritten(row) {
+  return {
+    id: Number(row.id),
+    kind: "written",
+    question: row.question,
+    answer: row.answer,
+    marks: Number(row.marks) || 5,
+    style: row.style || "theory",
+    category: row.category,
+    topic: row.topic,
+    parentTopic: row.parent_topic || "",
+    topicLabel: row.topic_label || "",
+    difficulty: row.difficulty,
+    source: row.source || "",
+    createdAt: row.created_at,
+  };
+}
+
+export function adminListQuestions(kind, category, topicIds) {
+  if (!topicIds.length) return [];
+  const marks = topicIds.map(() => "?").join(", ");
+  if (kind === "written") {
+    return db
+      .prepare(
+        `SELECT id, question, answer, marks, style, category, topic, parent_topic, topic_label, difficulty, source, created_at
+         FROM written_questions
+         WHERE category = ? AND topic IN (${marks})
+         ORDER BY id DESC
+         LIMIT 500`,
+      )
+      .all(category, ...topicIds)
+      .map(toAdminWritten);
+  }
+  return db
+    .prepare(
+      `SELECT id, question, options, answer, explanation, category, topic, parent_topic, topic_label, difficulty, source, created_at
+       FROM questions
+       WHERE category = ? AND topic IN (${marks})
+       ORDER BY id DESC
+       LIMIT 500`,
+    )
+    .all(category, ...topicIds)
+    .map(toAdminMcq);
+}
+
+export function adminSaveQuestion(kind, item) {
+  const id = Number(item.id);
+  if (kind === "written") {
+    if (Number.isInteger(id) && id > 0) {
+      const result = db
+        .prepare(
+          `UPDATE written_questions
+           SET question = ?, answer = ?, marks = ?, style = ?, category = ?, topic = ?, parent_topic = ?, topic_label = ?, difficulty = ?, source = ?
+           WHERE id = ?`,
+        )
+        .run(
+          item.question,
+          item.answer,
+          Number(item.marks) || 5,
+          item.style || "theory",
+          item.category,
+          item.topic,
+          item.parentTopic || "",
+          item.topicLabel || "",
+          item.difficulty || "Medium",
+          item.source || "",
+          id,
+        );
+      return { id, updated: result.changes || 0 };
+    }
+    const result = insertWritten.run(
+      item.question,
+      item.answer,
+      Number(item.marks) || 5,
+      item.style || "theory",
+      item.category,
+      item.topic,
+      item.parentTopic || "",
+      item.topicLabel || "",
+      item.difficulty || "Medium",
+      item.source || "",
+      new Date().toISOString(),
+    );
+    return { id: result.changes ? Number(result.lastInsertRowid) : 0, updated: result.changes || 0 };
+  }
+  const explanation = packExplanation(item);
+  const options = JSON.stringify(item.options);
+  if (Number.isInteger(id) && id > 0) {
+    const result = db
+      .prepare(
+        `UPDATE questions
+         SET question = ?, options = ?, answer = ?, explanation = ?, category = ?, topic = ?, parent_topic = ?, topic_label = ?, difficulty = ?, source = ?
+         WHERE id = ?`,
+      )
+      .run(
+        item.question,
+        options,
+        item.answer,
+        explanation,
+        item.category,
+        item.topic,
+        item.parentTopic || "",
+        item.topicLabel || "",
+        item.difficulty || "Medium",
+        item.source || "",
+        id,
+      );
+    return { id, updated: result.changes || 0 };
+  }
+  const result = insertQuestion.run(
+    item.question,
+    options,
+    item.answer,
+    explanation,
+    item.category,
+    item.topic,
+    item.parentTopic || "",
+    item.topicLabel || "",
+    item.difficulty || "Medium",
+    item.source || "",
+    new Date().toISOString(),
+  );
+  return { id: result.changes ? Number(result.lastInsertRowid) : 0, updated: result.changes || 0 };
+}
+
+export function adminDeleteQuestion(kind, id) {
+  const table = kind === "written" ? "written_questions" : "questions";
+  const result = db.prepare(`DELETE FROM ${table} WHERE id = ?`).run(id);
+  return result.changes || 0;
+}
+
 export function practiceWrittenByCategories(categories, limit) {
   if (!categories.length) return [];
   const marks = categories.map(() => "?").join(", ");

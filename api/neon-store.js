@@ -243,6 +243,161 @@ export async function practiceWrittenQuestions(category, topicIds, limit) {
   return rows.map(toWrittenPublic);
 }
 
+function toAdminMcq(row) {
+  const explained = unpackExplanation(row.explanation);
+  return {
+    id: Number(row.id),
+    kind: "mcq",
+    question: row.question,
+    options: JSON.parse(row.options),
+    answer: Number(row.answer),
+    explanation: explained.explanation,
+    optionExplanations: explained.optionExplanations,
+    category: row.category,
+    topic: row.topic,
+    parentTopic: row.parent_topic || "",
+    topicLabel: row.topic_label || "",
+    difficulty: row.difficulty,
+    source: row.source || "",
+    createdAt: row.created_at,
+  };
+}
+
+function toAdminWritten(row) {
+  return {
+    id: Number(row.id),
+    kind: "written",
+    question: row.question,
+    answer: row.answer,
+    marks: Number(row.marks) || 5,
+    style: row.style || "theory",
+    category: row.category,
+    topic: row.topic,
+    parentTopic: row.parent_topic || "",
+    topicLabel: row.topic_label || "",
+    difficulty: row.difficulty,
+    source: row.source || "",
+    createdAt: row.created_at,
+  };
+}
+
+export async function adminListQuestions(kind, category, topicIds) {
+  await ensureSchema();
+  if (!topicIds.length) return [];
+  if (kind === "written") {
+    const rows = await sql`
+      SELECT id, question, answer, marks, style, category, topic, parent_topic, topic_label, difficulty, source, created_at
+      FROM written_questions
+      WHERE category = ${category} AND topic = ANY(${topicIds})
+      ORDER BY id DESC
+      LIMIT 500
+    `;
+    return rows.map(toAdminWritten);
+  }
+  const rows = await sql`
+    SELECT id, question, options, answer, explanation, category, topic, parent_topic, topic_label, difficulty, source, created_at
+    FROM questions
+    WHERE category = ${category} AND topic = ANY(${topicIds})
+    ORDER BY id DESC
+    LIMIT 500
+  `;
+  return rows.map(toAdminMcq);
+}
+
+export async function adminSaveQuestion(kind, item) {
+  await ensureSchema();
+  const id = Number(item.id);
+  if (kind === "written") {
+    if (Number.isInteger(id) && id > 0) {
+      const rows = await sql`
+        UPDATE written_questions
+        SET question = ${item.question},
+            answer = ${item.answer},
+            marks = ${Number(item.marks) || 5},
+            style = ${item.style || "theory"},
+            category = ${item.category},
+            topic = ${item.topic},
+            parent_topic = ${item.parentTopic || ""},
+            topic_label = ${item.topicLabel || ""},
+            difficulty = ${item.difficulty || "Medium"},
+            source = ${item.source || ""}
+        WHERE id = ${id}
+        RETURNING id
+      `;
+      return { id, updated: rows.length };
+    }
+    const rows = await sql`
+      INSERT INTO written_questions
+        (question, answer, marks, style, category, topic, parent_topic, topic_label, difficulty, source, created_at)
+      VALUES (
+        ${item.question},
+        ${item.answer},
+        ${Number(item.marks) || 5},
+        ${item.style || "theory"},
+        ${item.category},
+        ${item.topic},
+        ${item.parentTopic || ""},
+        ${item.topicLabel || ""},
+        ${item.difficulty || "Medium"},
+        ${item.source || ""},
+        ${new Date().toISOString()}
+      )
+      ON CONFLICT (category, topic, md5(question)) DO NOTHING
+      RETURNING id
+    `;
+    return { id: Number(rows[0]?.id || 0), updated: rows.length };
+  }
+  const explanation = packExplanation(item);
+  const options = JSON.stringify(item.options);
+  if (Number.isInteger(id) && id > 0) {
+    const rows = await sql`
+      UPDATE questions
+      SET question = ${item.question},
+          options = ${options},
+          answer = ${item.answer},
+          explanation = ${explanation},
+          category = ${item.category},
+          topic = ${item.topic},
+          parent_topic = ${item.parentTopic || ""},
+          topic_label = ${item.topicLabel || ""},
+          difficulty = ${item.difficulty || "Medium"},
+          source = ${item.source || ""}
+      WHERE id = ${id}
+      RETURNING id
+    `;
+    return { id, updated: rows.length };
+  }
+  const rows = await sql`
+    INSERT INTO questions
+      (question, options, answer, explanation, category, topic, parent_topic, topic_label, difficulty, source, created_at)
+    VALUES (
+      ${item.question},
+      ${options},
+      ${item.answer},
+      ${explanation},
+      ${item.category},
+      ${item.topic},
+      ${item.parentTopic || ""},
+      ${item.topicLabel || ""},
+      ${item.difficulty || "Medium"},
+      ${item.source || ""},
+      ${new Date().toISOString()}
+    )
+    ON CONFLICT (category, topic, md5(question)) DO NOTHING
+    RETURNING id
+  `;
+  return { id: Number(rows[0]?.id || 0), updated: rows.length };
+}
+
+export async function adminDeleteQuestion(kind, id) {
+  await ensureSchema();
+  const rows =
+    kind === "written"
+      ? await sql`DELETE FROM written_questions WHERE id = ${id} RETURNING id`
+      : await sql`DELETE FROM questions WHERE id = ${id} RETURNING id`;
+  return rows.length;
+}
+
 export async function practiceWrittenByCategories(categories, limit) {
   await ensureSchema();
   if (!categories.length) return [];

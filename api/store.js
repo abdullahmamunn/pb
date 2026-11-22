@@ -34,6 +34,15 @@ const emptyStore = {
   practiceWrittenByCategories() {
     return [];
   },
+  adminListQuestions() {
+    return [];
+  },
+  adminSaveQuestion() {
+    return { id: 0, updated: 0 };
+  },
+  adminDeleteQuestion() {
+    return 0;
+  },
 };
 
 const store = databaseUrl
@@ -54,3 +63,6 @@ export const saveWrittenQuestions = store.saveWrittenQuestions;
 export const countWrittenByTopic = store.countWrittenByTopic;
 export const practiceWrittenQuestions = store.practiceWrittenQuestions;
 export const practiceWrittenByCategories = store.practiceWrittenByCategories;
+export const adminListQuestions = store.adminListQuestions;
+export const adminSaveQuestion = store.adminSaveQuestion;
+export const adminDeleteQuestion = store.adminDeleteQuestion;
