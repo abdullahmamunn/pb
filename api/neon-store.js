@@ -398,6 +398,45 @@ export async function adminDeleteQuestion(kind, id) {
   return rows.length;
 }
 
+function likeTerm(query) {
+  return `%${String(query || "").replace(/[%_\\]/g, "").trim()}%`;
+}
+
+export async function adminSearchQuestions(kind, query) {
+  await ensureSchema();
+  const term = likeTerm(query);
+  if (term === "%%") return [];
+  if (kind === "written") {
+    const rows = await sql`
+      SELECT id, question, answer, marks, style, category, topic, parent_topic, topic_label, difficulty, source, created_at
+      FROM written_questions
+      WHERE question ILIKE ${term}
+      ORDER BY id DESC
+      LIMIT 40
+    `;
+    return rows.map(toAdminWritten);
+  }
+  const rows = await sql`
+    SELECT id, question, options, answer, explanation, category, topic, parent_topic, topic_label, difficulty, source, created_at
+    FROM questions
+    WHERE question ILIKE ${term}
+    ORDER BY id DESC
+    LIMIT 40
+  `;
+  return rows.map(toAdminMcq);
+}
+
+export async function adminListMcqForReview() {
+  await ensureSchema();
+  const rows = await sql`
+    SELECT id, question, options, answer, explanation, category, topic, parent_topic, topic_label, difficulty, source, created_at
+    FROM questions
+    ORDER BY id DESC
+    LIMIT 4000
+  `;
+  return rows.map(toAdminMcq);
+}
+
 export async function practiceWrittenByCategories(categories, limit) {
   await ensureSchema();
   if (!categories.length) return [];

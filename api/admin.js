@@ -1,9 +1,12 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { allTopicIds, TOPIC_TREE, topicScope, treeWithCounts } from "./topics.js";
+import { auditMcq } from "./audit.js";
 import {
   adminDeleteQuestion,
+  adminListMcqForReview,
   adminListQuestions,
   adminSaveQuestion,
+  adminSearchQuestions,
   countByTopic,
   countWrittenByTopic,
   listCustomTopics,
@@ -69,6 +72,11 @@ function normalizeDifficulty(value) {
 
 function normalizeKind(value) {
   return String(value || "").toLowerCase() === "written" ? "written" : "mcq";
+}
+
+function withIssues(questions, kind) {
+  if (kind !== "mcq") return questions;
+  return questions.map((item) => ({ ...item, issues: auditMcq(item) }));
 }
 
 function topicIdsFor(category, topicId) {
@@ -203,8 +211,35 @@ export default async function handler(req, res) {
         const custom = await listCustomTopics();
         ids = custom.filter((item) => item.category === category).map((item) => item.topic);
       }
-      const questions = await adminListQuestions(kind, category, ids);
+      const questions = withIssues(await adminListQuestions(kind, category, ids), kind);
       sendJson(res, 200, { questions });
+      return;
+    }
+
+    if (action === "search" && req.method === "GET") {
+      const kind = normalizeKind(readParam(req, "kind"));
+      const query = cleanText(readParam(req, "q"), 80);
+      if (query.length < 2) {
+        sendJson(res, 400, { error: "অন্তত ২ অক্ষর লিখুন।" });
+        return;
+      }
+      const questions = withIssues(await adminSearchQuestions(kind, query), kind);
+      sendJson(res, 200, { questions });
+      return;
+    }
+
+    if (action === "review" && req.method === "GET") {
+      const questions = await adminListMcqForReview();
+      const flagged = [];
+      for (const item of questions) {
+        const issues = auditMcq(item);
+        if (issues.length) flagged.push({ ...item, issues });
+      }
+      sendJson(res, 200, {
+        scanned: questions.length,
+        totalFlagged: flagged.length,
+        flagged: flagged.slice(0, 200),
+      });
       return;
     }
 

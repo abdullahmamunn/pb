@@ -379,6 +379,52 @@ export function adminDeleteQuestion(kind, id) {
   return result.changes || 0;
 }
 
+const MCQ_ADMIN_COLUMNS = `id, question, options, answer, explanation, category, topic, parent_topic, topic_label, difficulty, source, created_at`;
+const WRITTEN_ADMIN_COLUMNS = `id, question, answer, marks, style, category, topic, parent_topic, topic_label, difficulty, source, created_at`;
+
+function likeTerm(query) {
+  return `%${String(query || "").replace(/[%_\\]/g, "").trim()}%`;
+}
+
+export function adminSearchQuestions(kind, query) {
+  const term = likeTerm(query);
+  if (term === "%%") return [];
+  if (kind === "written") {
+    return db
+      .prepare(
+        `SELECT ${WRITTEN_ADMIN_COLUMNS}
+         FROM written_questions
+         WHERE question LIKE ?
+         ORDER BY id DESC
+         LIMIT 40`,
+      )
+      .all(term)
+      .map(toAdminWritten);
+  }
+  return db
+    .prepare(
+      `SELECT ${MCQ_ADMIN_COLUMNS}
+       FROM questions
+       WHERE question LIKE ?
+       ORDER BY id DESC
+       LIMIT 40`,
+    )
+    .all(term)
+    .map(toAdminMcq);
+}
+
+export function adminListMcqForReview() {
+  return db
+    .prepare(
+      `SELECT ${MCQ_ADMIN_COLUMNS}
+       FROM questions
+       ORDER BY id DESC
+       LIMIT 4000`,
+    )
+    .all()
+    .map(toAdminMcq);
+}
+
 export function practiceWrittenByCategories(categories, limit) {
   if (!categories.length) return [];
   const marks = categories.map(() => "?").join(", ");

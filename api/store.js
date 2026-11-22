@@ -43,6 +43,12 @@ const emptyStore = {
   adminDeleteQuestion() {
     return 0;
   },
+  adminSearchQuestions() {
+    return [];
+  },
+  adminListMcqForReview() {
+    return [];
+  },
 };
 
 const store = databaseUrl
@@ -66,3 +72,5 @@ export const practiceWrittenByCategories = store.practiceWrittenByCategories;
 export const adminListQuestions = store.adminListQuestions;
 export const adminSaveQuestion = store.adminSaveQuestion;
 export const adminDeleteQuestion = store.adminDeleteQuestion;
+export const adminSearchQuestions = store.adminSearchQuestions;
+export const adminListMcqForReview = store.adminListMcqForReview;
