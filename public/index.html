@@ -187,7 +187,7 @@
               <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800">MCQ · ১৫</span>
             </div>
             <h2 class="mt-4 text-lg font-bold">বাংলা</h2>
-            <p class="mt-1 text-sm leading-6 text-slate-500">সন্ধি, সমাস, কারক, বানান, সমার্থক-বিপরীত, বাগ্ধারা, রবীন্দ্র-নজরুল সাহিত্য</p>
+            <p class="mt-1 text-sm leading-6 text-slate-500">ব্যাকরণ, বাক্য, বাগ্ধারা, এবং যেকোনো লেখক বা সাহিত্য</p>
             <div class="mt-5 flex items-center justify-between">
               <span class="text-sm text-slate-400"><span data-count="bangla">—</span>টি প্রশ্ন</span>
               <button type="button" data-category="bangla" class="start-cat text-sm font-semibold text-[#0f8a4b] hover:text-emerald-800">শুরু করুন →</button>
@@ -201,7 +201,7 @@
               <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800">MCQ · ১৫</span>
             </div>
             <h2 class="mt-4 text-lg font-bold">ইংরেজি</h2>
-            <p class="mt-1 text-sm leading-6 text-slate-500">Synonym/antonym, error detection, prepositions, tense, voice, narration, idioms</p>
+            <p class="mt-1 text-sm leading-6 text-slate-500">Vocabulary, grammar, comprehension, translation, idioms</p>
             <div class="mt-5 flex items-center justify-between">
               <span class="text-sm text-slate-400"><span data-count="english">—</span>টি প্রশ্ন</span>
               <button type="button" data-category="english" class="start-cat text-sm font-semibold text-[#0f8a4b] hover:text-emerald-800">শুরু করুন →</button>
@@ -214,8 +214,8 @@
               </div>
               <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800">MCQ · ১৫</span>
             </div>
-            <h2 class="mt-4 text-lg font-bold">Aptitude Mathematics</h2>
-            <p class="mt-1 text-sm leading-6 text-slate-500">Ratio, %, LCM/HCF, average, unitary, speed-work, algebra, mental ability</p>
+            <h2 class="mt-4 text-lg font-bold">গণিত</h2>
+            <p class="mt-1 text-sm leading-6 text-slate-500">পাটিগণিত, সুদ, বীজগণিত, জ্যামিতি, সম্ভাবনা, মেন্টাল অ্যাবিলিটি</p>
             <div class="mt-5 flex items-center justify-between">
               <span class="text-sm text-slate-400"><span data-count="math">—</span>টি প্রশ্ন</span>
               <button type="button" data-category="math" class="start-cat text-sm font-semibold text-[#0f8a4b] hover:text-emerald-800">শুরু করুন →</button>
@@ -228,8 +228,8 @@
               </div>
               <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800">MCQ · ১৫</span>
             </div>
-            <h2 class="mt-4 text-lg font-bold">GK ও জ্বালানি খাত</h2>
-            <p class="mt-1 text-sm leading-6 text-slate-500">পেট্রোবাংলা, গ্যাসক্ষেত্র, পাইপলাইন, SCADA, সংবিধান, আন্তর্জাতিক, বিজ্ঞান, CA</p>
+            <h2 class="mt-4 text-lg font-bold">সাধারণ জ্ঞান</h2>
+            <p class="mt-1 text-sm leading-6 text-slate-500">বাংলাদেশ, আন্তর্জাতিক, বিজ্ঞান, সাম্প্রতিক। পেট্রোবাংলা আলাদা টপিক।</p>
             <div class="mt-5 flex items-center justify-between">
               <span class="text-sm text-slate-400"><span data-count="gk">—</span>টি প্রশ্ন</span>
               <button type="button" data-category="gk" class="start-cat text-sm font-semibold text-[#0f8a4b] hover:text-emerald-800">শুরু করুন →</button>
@@ -655,11 +655,11 @@
         <p class="text-xs font-semibold text-[#0f8a4b]">টপিক বেছে নিন</p>
         <h3 id="topics-title" class="mt-1 text-xl font-bold text-slate-950"></h3>
         <p id="topics-count" class="mt-1 text-sm font-semibold text-slate-600"></p>
-        <p class="mt-2 text-sm leading-6 text-slate-500">তালিকা থেকে টপিক বেছে নিন, অথবা নিজে কাস্টম টপিক লিখুন (যেমন: মাইকেল মধুসূদন দত্ত)। এআই প্রশ্ন ডাটাবেজে জমা থাকবে।</p>
+        <p id="custom-topic-hint" class="mt-2 text-sm leading-6 text-slate-500">তালিকা থেকে টপিক বেছে নিন, অথবা নিজে কাস্টম টপিক লিখুন। এআই প্রশ্ন ডাটাবেজে জমা থাকবে।</p>
         <div class="mt-3 rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/40 p-3">
           <label for="custom-topic-input" class="block text-xs font-semibold text-emerald-900">কাস্টম টপিক</label>
           <div class="mt-2 flex flex-col gap-2 sm:flex-row">
-            <input id="custom-topic-input" type="text" maxlength="120" placeholder="যেমন: মাইকেল মধুসূদন দত্ত" class="min-h-11 w-full flex-1 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm" />
+            <input id="custom-topic-input" type="text" maxlength="120" placeholder="যেমন: এই বিষয়ের একটি টপিক" class="min-h-11 w-full flex-1 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm" />
             <button type="button" id="custom-topic-use" class="min-h-11 shrink-0 rounded-2xl bg-[#0f8a4b] px-4 text-sm font-bold text-white hover:bg-emerald-700">ব্যবহার করুন</button>
           </div>
         </div>
@@ -761,9 +761,46 @@
         energy: "পেট্রোবাংলা ও জ্বালানি",
         bangla: "বাংলা",
         english: "ইংরেজি",
-        math: "Aptitude Mathematics",
-        gk: "GK ও জ্বালানি খাত",
+        math: "গণিত",
+        gk: "সাধারণ জ্ঞান",
         mixed: "পূর্ণাঙ্গ মক টেস্ট",
+      };
+      const PLACEHOLDER_BY_CATEGORY = {
+        bangla: "যেমন: মাইকেল মধুসূদন দত্ত",
+        english: "যেমন: Phrasal verbs",
+        math: "যেমন: চক্রবৃদ্ধি সুদ",
+        gk: "যেমন: জাতিসংঘ",
+        dsa: "যেমন: Binary heap",
+        dbms: "যেমন: B+ tree",
+        networks: "যেমন: CIDR",
+        swe: "যেমন: Sprint planning",
+        digital: "যেমন: Full adder",
+        os: "যেমন: Belady's anomaly",
+      };
+      const PLACEHOLDER_BY_TOPIC = {
+        sandhi: "যেমন: স্বরসন্ধি",
+        samas: "যেমন: কর্মধারয় সমাস",
+        "bn-literature": "যেমন: মাইকেল মধুসূদন দত্ত",
+        rabindranath: "যেমন: সোনার তরী",
+        nazrul: "যেমন: বিদ্রোহী",
+        vocabulary: "যেমন: Benevolent",
+        "en-synonym": "যেমন: Abundant",
+        "en-antonym": "যেমন: Scarce",
+        grammar: "যেমন: Mixed conditional",
+        "idiom-en": "যেমন: Bite the bullet",
+        arithmetic: "যেমন: লাভ-ক্ষতি",
+        percent: "যেমন: ধারাবাহিক লাভ",
+        "algebra-number": "যেমন: দ্বিঘাত সমীকরণ",
+        mental: "যেমন: বর্ণ ধারা",
+        "bd-history": "যেমন: ছয় দফা",
+        constitution: "যেমন: অনুচ্ছেদ ৭০",
+        liberation: "যেমন: সেক্টর কমান্ডার",
+        "current-affairs": "যেমন: চলতি বাজেট",
+        international: "যেমন: সার্ক",
+        "general-science": "যেমন: সালোকসংশ্লেষণ",
+        "petrobangla-energy": "যেমন: তিতাস গ্যাস",
+        "pb-companies": "যেমন: BAPEX",
+        "gas-fields": "যেমন: বিবিয়ানা",
       };
       const MOCK_TOPIC_ORDER = [
         "bangla",
@@ -1786,6 +1823,18 @@
         document.getElementById("topic-saved").textContent = `এই টপিকে সংরক্ষিত প্রশ্ন ${bn(node.saved || 0)}টি।`;
         document.getElementById("topic-error").classList.add("hidden");
         renderTopicList();
+        applyTopicPlaceholder();
+      }
+
+      function applyTopicPlaceholder() {
+        const node = state.topic ? findTopicNode(state.topic) : null;
+        const example = (state.topic && PLACEHOLDER_BY_TOPIC[state.topic])
+          || (node ? `যেমন: ${node.label}` : "")
+          || PLACEHOLDER_BY_CATEGORY[state.category]
+          || "যেমন: এই বিষয়ের একটি টপিক";
+        document.getElementById("custom-topic-input").placeholder = example;
+        document.getElementById("custom-topic-hint").textContent =
+          `তালিকা থেকে টপিক বেছে নিন, অথবা নিজে কাস্টম টপিক লিখুন (${example})। এআই প্রশ্ন ডাটাবেজে জমা থাকবে।`;
       }
 
       function useCustomTopic() {
@@ -1817,6 +1866,7 @@
         state.topicLabel = "";
         state.customLabel = "";
         document.getElementById("custom-topic-input").value = "";
+        applyTopicPlaceholder();
         document.getElementById("topics-title").textContent = CATEGORIES[category] || category;
         document.getElementById("topics-count").textContent = "";
         document.getElementById("topic-actions").classList.add("hidden");
@@ -2004,14 +2054,7 @@
             const node = document.querySelector(`[data-count="${id}"]`);
             if (!node) return;
             node.textContent = bn(count);
-            const saved = data.saved?.[id] || 0;
-            let label = node.parentElement.querySelector("[data-saved-label]");
-            if (!label) {
-              label = document.createElement("span");
-              label.dataset.savedLabel = id;
-              node.parentElement.append(label);
-            }
-            label.textContent = saved ? ` · সংরক্ষিত ${bn(saved)}` : "";
+            node.parentElement.querySelector("[data-saved-label]")?.remove();
           });
         } catch {
           document.querySelectorAll("[data-count]").forEach((node) => {

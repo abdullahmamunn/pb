@@ -1053,6 +1053,7 @@ const ORG_IDS = ["petrobangla", "doict", "bcs", "bank"];
 
 for (const question of pastPapers) {
   question.category = CATEGORY_MAP[question.category] || question.category;
+  if (question.category === "energy") question.category = "gk";
   if (!question.orgs) question.orgs = ORG_IDS.slice();
   if (!question.source) question.source = "সরকারি CSE/IT নিয়োগ";
 }
@@ -1071,13 +1072,13 @@ const CATEGORY_BRIEF = {
   os: "Operating systems only: scheduling, deadlock, memory management, paging, virtual memory.",
   energy: "Petrobangla and the Bangladesh oil and gas sector only: companies, gas fields, transmission, distribution, and IT systems such as SCADA used in that sector.",
   bangla:
-    "Bangla MCQ for Petrobangla: sandhi, samas, karok-bhibakti, natwa/satwa, spelling, synonym/antonym, idioms (বাগ্ধারা), one-word, and literature of Tagore, Nazrul, Jasimuddin and major writers. Write in Bengali.",
+    "General Bangla MCQ for any student or Bangladesh exam (BCS, bank, admission, govt jobs). No syllabus boundary: grammar (sandhi, samas, karok, spelling, synonyms, antonyms, idioms, sentence, affix) and literature of any writer, poem, novel, or drama the topic names. Write in Bengali.",
   english:
-    "English MCQ: synonyms/antonyms, error detection/sentence correction, prepositions, idioms, SVA, pronouns, parts of speech/analogies, tense, article, voice, narration, conditional. Write in English.",
+    "General English MCQ for any student or Bangladesh exam. No syllabus boundary: vocabulary, grammar, comprehension, translation, idioms, phrasal verbs, and sentence transformation. Write questions and options in English.",
   math:
-    "Aptitude math GMAT/IBA style: ratio, percentage, profit loss, mixtures, time-speed-distance, work-time, LCM/HCF, average, unitary method, linear equations, number theory, number series and reasoning. Write in Bengali.",
+    "General quantitative aptitude for any student or Bangladesh exam. No syllabus boundary: arithmetic, interest, mensuration, algebra, geometry, probability, statistics, and mental ability. Write in Bengali.",
   gk:
-    "General knowledge MCQ: Petrobangla companies, gas fields, pipeline/distribution, SCADA/IT, energy/LNG/power plants, Bangladesh history and constitution, mega-projects, international affairs, general science, and current affairs. Write in Bengali.",
+    "General knowledge for any student or Bangladesh exam. Cover Bangladesh, world affairs, science, environment, awards, books, and current affairs. Mention Petrobangla, gas, or energy ONLY when the topic is Petrobangla. Write in Bengali.",
   mixed:
     "A Petrobangla Assistant Manager CSE/IT paper mix: non-dept MCQ (Bangla, English, math, GK) plus departmental topics (programming/DSA, DBMS, networks, SWE/OOP, digital logic, OS).",
 };
@@ -1135,12 +1136,12 @@ Current-affairs mode (today: ${today}):
 ${useSearch
     ? "- Use Google Search for verifiable events from roughly the last 12 months that appear in Bangladesh job exams."
     : "- Focus on well-known recent events from roughly the last 12 months that appear in Bangladesh job exams. Prefer widely reported facts only."}
-- Prefer Bangladesh news, major international events, economy/budget/inflation, and energy/oil-gas/LNG when the topic asks for them.
+- Prefer Bangladesh news, major international events, economy, sports, and science. Include oil, gas, or Petrobangla only when the topic asks for them.
 - Every question needs a clear time anchor (month/year or exact date).
 - Do not invent names, numbers, awards, rankings, or events. If a fact is uncertain, choose another verified fact.
 - Explanations should briefly state when the event happened.`
     : "";
-  return `You set multiple-choice questions for Bangladesh government recruitment, including Petrobangla Assistant Manager (CSE/IT).
+  return `You set multiple-choice questions for Bangladesh exams: CSE/IT government recruitment, and open practice in Bangla, English, math, and general knowledge.
 
 Exam focus: ${ORG_BRIEF[org] || ORG_BRIEF.all}
 Subject: ${CATEGORY_BRIEF[category] || CATEGORY_BRIEF.mixed}
@@ -1156,7 +1157,7 @@ Rules:
 - "answer" is the zero-based index (0, 1, 2, or 3). Only one option is correct.
 - "explanation" is a short overall Bengali summary (1 to 2 sentences).
 ${optionExplainRule}
-- category must be exactly one of: bangla, english, math, gk, networks, dbms, dsa, swe, digital, os, energy.
+- category must be exactly one of: bangla, english, math, gk, networks, dbms, dsa, swe, digital, os. Petrobangla questions use category gk.
 - If the subject is not mixed, every question must use that one category id.
 - difficulty must be exactly Easy, Medium, or Hard.
 - Return only the JSON array.`;
@@ -1362,7 +1363,7 @@ function normalizeCategoryId(value) {
   if (text.includes("digital") || text.includes("k-map") || text.includes("kmap") || text.includes("discrete")) {
     return "digital";
   }
-  if (text.includes("energy") || text.includes("petro") || text.includes("gas")) return "energy";
+  if (text.includes("energy") || text.includes("petro") || text.includes("gas")) return "gk";
   if (text.includes("software") || text.includes("oop") || text === "swe") return "swe";
   if (text.includes("bangla") || text.includes("বাংলা")) return "bangla";
   if (text.includes("english") || text.includes("ইংরেজি")) return "english";
